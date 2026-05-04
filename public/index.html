@@ -1,0 +1,92 @@
+<!-- public/index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#F8F9FA">
+    <title>Earn Platform</title>
+    <style>
+        body { margin: 0; font-family: 'Inter', sans-serif; background: #F8F9FA; color: #2D3436; }
+        #app { min-height: 100vh; }
+        #adminApp { min-height: 100vh; display: none; }
+        #adminContent { flex: 1; }
+    </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/design-system.css">
+    <link rel="stylesheet" href="/css/layout.css">
+    <link rel="stylesheet" href="/css/pages.css">
+    <link rel="stylesheet" href="/admin/css/admin.css">
+</head>
+<body>
+    <div id="app">
+        <div id="appContent" class="app-content"></div>
+    </div>
+
+    <div id="adminApp">
+        <div id="adminContent"></div>
+    </div>
+
+    <!-- ============ CONFIG ============ -->
+    <script src="/js/config.js"></script>
+
+    <!-- ============ CORE SCRIPTS ============ -->
+    <script src="/js/api.js"></script>
+    <script src="/js/store.js"></script>
+    <script src="/js/router.js"></script>
+    
+    <!-- ============ USER COMPONENTS ============ -->
+    <script src="/js/components/toast.js"></script>
+    <script src="/js/components/modal.js"></script>
+    <script src="/js/components/dialog.js"></script>
+    <script src="/js/components/successModal.js"></script>
+    <script src="/js/components/navbar.js"></script>
+    <script src="/js/components/bottomNav.js"></script>
+    <script src="/js/components/notificationBell.js"></script>
+    <script src="/js/components/desktopSidebar.js"></script>
+    
+    <!-- ============ USER PAGES ============ -->
+    <script src="/js/pages/login.js"></script>
+    <script src="/js/pages/register.js"></script>
+    <script src="/js/pages/home.js"></script>
+    <script src="/js/pages/tasks.js"></script>
+    <script src="/js/pages/packages.js"></script>
+    <script src="/js/pages/team.js"></script>
+    <script src="/js/pages/earnings.js"></script>
+    <script src="/js/pages/leaderboard.js"></script>
+    <script src="/js/pages/profile.js"></script>
+    <script src="/js/pages/deposit.js"></script>
+    <script src="/js/pages/withdraw.js"></script>
+    <script src="/js/pages/giftcode.js"></script>
+    
+    <!-- ============ ADMIN API ============ -->
+    <script src="/admin/js/admin-api.js"></script>
+    
+    <!-- ============ ADMIN COMPONENTS ============ -->
+    <script src="/admin/js/components/sidebar.js"></script>
+    
+    <!-- ============ ADMIN PAGES ============ -->
+    <script src="/admin/js/pages/login.js"></script>
+    <script src="/admin/js/pages/dashboard.js"></script>
+    <script src="/admin/js/pages/deposits.js"></script>
+    <script src="/admin/js/pages/withdrawals.js"></script>
+    <script src="/admin/js/pages/users.js"></script>
+    <script src="/admin/js/pages/giftcodes.js"></script>
+    <script src="/admin/js/pages/salaries.js"></script>
+    <script src="/admin/js/pages/features.js"></script>
+    <script src="/admin/js/pages/broadcast.js"></script>
+    <script src="/admin/js/pages/logs.js"></script>
+    
+    <!-- ============ APP INITIALIZATION ============ -->
+    <script src="/admin/js/admin-app.js"></script>
+    <script src="/js/app.js"></script>
+
+    <!-- Set page title from config -->
+    <script>
+        if (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.fullName) {
+            document.title = APP_CONFIG.fullName;
+        }
+    </script>
+</body>
+</html>
