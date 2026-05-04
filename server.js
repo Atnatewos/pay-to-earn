@@ -2,7 +2,6 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const helmet = require('helmet');
 const compression = require('compression');
 const path = require('path');
 const fs = require('fs');
@@ -11,18 +10,13 @@ const errorHandler = require('./middleware/errorHandler');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(helmet({
-    contentSecurityPolicy: false,
-    crossOriginEmbedderPolicy: false,
-    crossOriginResourcePolicy: false
-}));
+// CORS - Allow ALL origins for now
+app.use(cors());
 
+// Performance
 app.use(compression());
-// server.js - Update the CORS section
-app.use(cors({
-    origin: ['https://pay-to-earn.vercel.app', 'http://localhost:3000'],
-    credentials: true
-}));
+
+// Body parsing
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -55,11 +49,6 @@ const routes = {
     '/api/giftcodes': './modules/giftcodes/giftcodes.routes',
     '/api/salary': './modules/salary/salary.routes',
     '/api/leaderboard': './modules/leaderboard/leaderboard.routes',
-    // FUTURE: Add more API routes here
-    // '/api/announcements': './modules/announcements/announcements.routes',
-    // '/api/reports': './modules/reports/reports.routes',
-    // '/api/support': './modules/support/support.routes',
-    // '/api/kyc': './modules/kyc/kyc.routes',
 };
 
 for (const [routePath, routeFile] of Object.entries(routes)) {
@@ -94,11 +83,6 @@ app.get('*', (req, res) => {
     res.sendFile(path.join(publicPath, 'index.html'));
 });
 
-// Start scheduler for automated tasks
-const Scheduler = require('./jobs/scheduler');
-Scheduler.start();
-
-// Error handler
 app.use(errorHandler);
 
 app.listen(PORT, () => {
