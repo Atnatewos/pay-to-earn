@@ -18,7 +18,11 @@ app.use(helmet({
 }));
 
 app.use(compression());
-app.use(cors());
+// server.js - Update the CORS section
+app.use(cors({
+    origin: ['https://pay-to-earn.vercel.app', 'http://localhost:3000'],
+    credentials: true
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

@@ -1,6 +1,6 @@
 // public/js/api.js
 const API = {
-    base: 'https://pay-to-earn-production.up.railway.app/api',
+    base: (typeof APP_CONFIG !== 'undefined') ? APP_CONFIG.apiUrl : '/api',
     token: null,
 
     setToken(token) {
@@ -47,18 +47,7 @@ const API = {
         return data;
     },
 
-    get(endpoint) {
-        return this.request(endpoint);
-    },
-
-    post(endpoint, body) {
-        return this.request(endpoint, {
-            method: 'POST',
-            body: JSON.stringify(body)
-        });
-    },
-
-    delete(endpoint) {
-        return this.request(endpoint, { method: 'DELETE' });
-    }
+    get(endpoint) { return this.request(endpoint); },
+    post(endpoint, body) { return this.request(endpoint, { method: 'POST', body: JSON.stringify(body) }); },
+    delete(endpoint) { return this.request(endpoint, { method: 'DELETE' }); }
 };

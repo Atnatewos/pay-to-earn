@@ -1,23 +1,24 @@
 // public/js/config.js
 const APP_CONFIG = {
-    name: 'THERON',
-    fullName: 'Abyssinia Earn Platform',
+    // Platform name
+    name: 'Pay to Earn',
+    fullName: 'Pay to Earn Platform',
     tagline: 'Share & Earn',
-    adminName: 'Theron Admin',
-    adminFullName: 'Earn Platform Admin Panel',
-    currency: 'ETB',
-    bankName: 'TeleBirr',
-    bankAccount: '0920944941',
-    bankHolder: 'Atnatewos',
-    supportPhone: '',
-    supportEmail: '',
-    website: 'http://localhost:3000',
+    adminName: 'Pay to Earn Admin',
     
-    // Branding
-    primaryColor: '#6C5CE7',
-    logo: '💰',
+    // API URLs - CHANGE THESE TWO ONLY
+    apiUrl: 'https://pay-to-earn-production.up.railway.app/api',
+    frontendUrl: 'https://pay-to-earn.vercel.app',
+    
+    // Currency
+    currency: 'ETB',
+    
+    // Bank Details
+    bankName: 'CBE',
+    bankAccount: '1000698604526',
+    bankHolder: 'Gemechu',
     
     // Contact
-    telegramChannel: '',
-    telegramSupport: '',
+    supportPhone: '',
+    supportEmail: '',
 };
