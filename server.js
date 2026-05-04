@@ -11,7 +11,23 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // CORS - Allow ALL origins for now
+// ALIEN CORS FIX - Must be BEFORE everything else
+app.use((req, res, next) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Max-Age', '86400');
+    
+    if (req.method === 'OPTIONS') {
+        return res.status(200).end();
+    }
+    next();
+});
+
+// THEN your existing cors() and everything else
 app.use(cors());
+// ... rest of server.js
 
 // Performance
 app.use(compression());
