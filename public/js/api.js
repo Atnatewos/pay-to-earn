@@ -1,6 +1,6 @@
 // public/js/api.js
 const API = {
-    base: '/api',
+    base: 'https://pay-to-earn-production.up.railway.app/api',
     token: null,
 
     setToken(token) {

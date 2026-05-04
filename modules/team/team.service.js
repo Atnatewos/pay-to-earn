@@ -95,7 +95,7 @@ class TeamService {
     async getReferralLink(userId) {
         const [users] = await pool.query('SELECT referral_code FROM users WHERE id = ?', [userId]);
         if (users.length === 0) throw new Error('User not found');
-        const baseUrl = process.env.BASE_URL || 'http://localhost:3000';
+        const baseUrl = process.env.BASE_URL || 'https://pay-to-earn-production.up.railway.app';
         return { code: users[0].referral_code, link: `${baseUrl}/register?ref=${users[0].referral_code}` };
     }
 }
