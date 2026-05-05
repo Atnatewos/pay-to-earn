@@ -1,28 +1,26 @@
 // server.js
 require('dotenv').config();
 const express = require('express');
-const cors = require('cors');
 const compression = require('compression');
 const path = require('path');
 const fs = require('fs');
 const errorHandler = require('./middleware/errorHandler');
-const Scheduler = require('./jobs/scheduler');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// CORS headers
+// MANUAL CORS - NO PACKAGE - CANNOT FAIL
 app.use((req, res, next) => {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    if (req.method === 'OPTIONS') return res.status(200).end();
+    res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+    res.header('Access-Control-Allow-Credentials', 'true');
+    res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,PATCH,OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Origin,X-Requested-With,Content-Type,Accept,Authorization');
+    if (req.method === 'OPTIONS') return res.sendStatus(200);
     next();
 });
 
-app.use(cors());
 app.use(compression());
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
 const publicPath = path.join(__dirname, 'public');
@@ -51,16 +49,17 @@ for (const [routePath, routeFile] of Object.entries(routes)) {
         const routeModule = require(routeFile);
         if (typeof routeModule === 'function' || (routeModule && routeModule.stack)) {
             app.use(routePath, routeModule);
-            console.log(`✓ ${routePath}`);
+            console.log('✓ ' + routePath);
+        } else {
+            console.error('✗ Invalid route: ' + routePath);
         }
-    } catch (error) { console.error(`✗ ${routePath}:`, error.message); }
+    } catch (error) {
+        console.error('✗ Failed: ' + routePath + ' - ' + error.message);
+    }
 }
 
-app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
+app.get('/api/health', (req, res) => res.json({ status: 'ok', time: new Date().toISOString() }));
 app.get('*', (req, res) => res.sendFile(path.join(publicPath, 'index.html')));
 app.use(errorHandler);
 
-app.listen(PORT, () => {
-    console.log(`✓ Server on port ${PORT}`);
-    try { Scheduler.start(); } catch (e) { console.log('Scheduler not started (cron may not be installed)'); }
-});
+app.listen(PORT, () => console.log('Server running on port ' + PORT));
