@@ -7,12 +7,14 @@ class TasksService {
     async getTodayTask(userId) {
         const today = new Date().toISOString().split('T')[0];
 
-        let [tasks] = await pool.query(
-            'SELECT * FROM daily_tasks WHERE user_id = ? AND task_date = ?',
+        // Check if user already has tasks for today
+        let taskResult = await pool.query(
+            'SELECT * FROM daily_tasks WHERE user_id = $1 AND task_date = $2',
             [userId, today]
         );
 
-        if (tasks.length === 0) {
+        // If no task record for today, create one
+        if (taskResult.rows.length === 0) {
             const user = await this.getUserPackageInfo(userId);
             
             if (!user) {
@@ -27,50 +29,62 @@ class TasksService {
                 throw new Error('No active package. Please deposit to activate a package.');
             }
 
+            // Create new daily task record
             await pool.query(
-                'INSERT INTO daily_tasks (user_id, task_date, tasks_allocated) VALUES (?, ?, ?)',
+                'INSERT INTO daily_tasks (user_id, task_date, tasks_allocated) VALUES ($1, $2, $3)',
                 [userId, today, tasksAllocated]
             );
 
-            [tasks] = await pool.query(
-                'SELECT * FROM daily_tasks WHERE user_id = ? AND task_date = ?',
+            // Re-fetch the newly created task
+            taskResult = await pool.query(
+                'SELECT * FROM daily_tasks WHERE user_id = $1 AND task_date = $2',
                 [userId, today]
             );
         }
 
-        return tasks[0];
+        return taskResult.rows[0];
     }
 
     async getAllocatedTasks(packageName) {
-        if (packageName === 'Intern') return INTERN.TASKS_PER_DAY;
+        // Intern package has fixed tasks
+        if (packageName === 'Intern') {
+            return INTERN.TASKS_PER_DAY;
+        }
 
-        const [packages] = await pool.query(
-            'SELECT tasks_per_day FROM packages WHERE name = ? AND is_active = TRUE',
+        // Get tasks per day from package configuration
+        const result = await pool.query(
+            'SELECT tasks_per_day FROM packages WHERE name = $1 AND is_active = TRUE',
             [packageName]
         );
 
-        return packages.length > 0 ? packages[0].tasks_per_day : 0;
+        return result.rows.length > 0 ? result.rows[0].tasks_per_day : 0;
     }
 
     async getUserPackageInfo(userId) {
-        const [users] = await pool.query(
-            'SELECT active_package, package_expiry FROM users WHERE id = ?',
+        // Get user's active package and expiry
+        const result = await pool.query(
+            'SELECT active_package, package_expiry FROM users WHERE id = $1',
             [userId]
         );
 
-        if (users.length === 0) return null;
+        if (result.rows.length === 0) {
+            return null;
+        }
 
-        const user = users[0];
+        const user = result.rows[0];
 
+        // Check if package has expired
         if (user.package_expiry && new Date(user.package_expiry) < new Date()) {
+            // Intern package special handling (3 days only, mark as used)
             if (user.active_package === 'Intern') {
                 await pool.query(
-                    'UPDATE users SET active_package = NULL, package_expiry = NULL, is_intern_used = TRUE WHERE id = ?',
+                    'UPDATE users SET active_package = NULL, package_expiry = NULL, is_intern_used = TRUE WHERE id = $1',
                     [userId]
                 );
             } else {
+                // Regular package - just deactivate
                 await pool.query(
-                    'UPDATE users SET active_package = NULL, package_expiry = NULL WHERE id = ?',
+                    'UPDATE users SET active_package = NULL, package_expiry = NULL WHERE id = $1',
                     [userId]
                 );
             }
@@ -80,91 +94,108 @@ class TasksService {
         return user;
     }
 
+    async getIncomePerTask(userId) {
+        // Get user's active package to determine income per task
+        const result = await pool.query(
+            'SELECT active_package FROM users WHERE id = $1',
+            [userId]
+        );
+
+        if (result.rows.length === 0 || !result.rows[0].active_package) {
+            return INTERN.INCOME_PER_TASK;
+        }
+
+        if (result.rows[0].active_package === 'Intern') {
+            return INTERN.INCOME_PER_TASK;
+        }
+
+        // Get income per task from package configuration
+        const pkgResult = await pool.query(
+            'SELECT income_per_task FROM packages WHERE name = $1 AND is_active = TRUE',
+            [result.rows[0].active_package]
+        );
+
+        return pkgResult.rows.length > 0 ? pkgResult.rows[0].income_per_task : INTERN.INCOME_PER_TASK;
+    }
+
     async completeTask(userId) {
-        const connection = await pool.getConnection();
+        const client = await pool.connect();
 
         try {
-            await connection.beginTransaction();
+            // Start transaction
+            await client.query('BEGIN');
 
+            // Get today's task
             const today = new Date().toISOString().split('T')[0];
-            const [tasks] = await connection.query(
-                'SELECT * FROM daily_tasks WHERE user_id = ? AND task_date = ?',
+            const taskResult = await client.query(
+                'SELECT * FROM daily_tasks WHERE user_id = $1 AND task_date = $2',
                 [userId, today]
             );
 
-            if (tasks.length === 0) {
+            if (taskResult.rows.length === 0) {
                 throw new Error('No tasks allocated for today');
             }
 
-            const task = tasks[0];
+            const task = taskResult.rows[0];
 
+            // Check if all tasks are already completed
             if (task.is_completed || task.tasks_completed >= task.tasks_allocated) {
                 throw new Error('All tasks completed for today');
             }
 
-            const incomePerTask = await this.getIncomePerTask(connection, userId);
+            // Get income per task based on user's package
+            const incomePerTask = await this.getIncomePerTask(userId);
 
+            // Calculate new progress
             const newCompleted = task.tasks_completed + 1;
-            const newEarned = task.earned + incomePerTask;
+            const newEarned = parseFloat(task.earned) + incomePerTask;
             const isCompleted = newCompleted >= task.tasks_allocated;
 
-            await connection.query(
+            // Update daily task progress
+            await client.query(
                 `UPDATE daily_tasks 
-                 SET tasks_completed = ?, earned = ?, is_completed = ?
-                 WHERE id = ?`,
+                 SET tasks_completed = $1, earned = $2, is_completed = $3
+                 WHERE id = $4`,
                 [newCompleted, newEarned, isCompleted, task.id]
             );
 
+            // Log individual task completion
             const taskNumber = newCompleted;
-            await connection.query(
+            await client.query(
                 `INSERT INTO task_logs (user_id, daily_task_id, task_number, earned)
-                 VALUES (?, ?, ?, ?)`,
+                 VALUES ($1, $2, $3, $4)`,
                 [userId, task.id, taskNumber, incomePerTask]
             );
 
-            await connection.query(
+            // Credit user balance for completing the task
+            await client.query(
                 `UPDATE users 
-                 SET balance = balance + ?, total_earned = total_earned + ?
-                 WHERE id = ?`,
-                [incomePerTask, incomePerTask, userId]
+                 SET balance = balance + $1, total_earned = total_earned + $1
+                 WHERE id = $2`,
+                [incomePerTask, userId]
             );
 
-            const [userBalance] = await connection.query(
-                'SELECT balance FROM users WHERE id = ?',
+            // Get updated balance for transaction record
+            const userBalance = await client.query(
+                'SELECT balance FROM users WHERE id = $1',
                 [userId]
             );
 
-            await connection.query(
+            // Record transaction in ledger
+            await client.query(
                 `INSERT INTO transactions (user_id, type, amount, balance_after, category, reference_id, description)
-                 VALUES (?, 'credit', ?, ?, 'task_earning', ?, ?)`,
-                [userId, incomePerTask, userBalance[0].balance, task.id, 
+                 VALUES ($1, 'credit', $2, $3, 'task_earning', $4, $5)`,
+                [userId, incomePerTask, userBalance.rows[0].balance, task.id, 
                  `Task #${taskNumber} completed`]
             );
 
-            const upline = await this.distributeTaskCommissions(connection, userId, incomePerTask);
+            // Distribute task commissions to upline (3 levels)
+            await this.distributeTaskCommissions(client, userId, incomePerTask);
 
-            await connection.commit();
+            // Commit all changes
+            await client.query('COMMIT');
 
-            // Send notifications to upline
-            if (upline && upline.length > 0) {
-                const rates = [COMMISSION.TASK.LEVEL_1, COMMISSION.TASK.LEVEL_2, COMMISSION.TASK.LEVEL_3];
-                for (const uplineUser of upline) {
-                    const rate = rates[uplineUser.level - 1];
-                    const commissionAmount = incomePerTask * rate;
-                    
-                    if (commissionAmount > 0) {
-                        await NotificationsService.create(
-                            uplineUser.ancestor_id,
-                            'Task Commission ✅',
-                            `You earned ${commissionAmount.toFixed(2)} ETB from a Level ${uplineUser.level} team member's task.`,
-                            'task',
-                            userId
-                        );
-                    }
-                }
-            }
-
-            // Notify user if all tasks completed
+            // Send notification if all tasks completed
             if (isCompleted) {
                 await NotificationsService.create(
                     userId,
@@ -182,97 +213,105 @@ class TasksService {
                 totalEarnedToday: newEarned,
                 isCompleted
             };
+
         } catch (error) {
-            await connection.rollback();
+            // Rollback on any error
+            await client.query('ROLLBACK');
             throw error;
         } finally {
-            connection.release();
+            // Release client back to pool
+            client.release();
         }
     }
 
-    async getIncomePerTask(connection, userId) {
-        const [users] = await connection.query(
-            'SELECT active_package FROM users WHERE id = ?',
-            [userId]
-        );
-
-        if (users.length === 0 || !users[0].active_package) {
-            return INTERN.INCOME_PER_TASK;
-        }
-
-        if (users[0].active_package === 'Intern') {
-            return INTERN.INCOME_PER_TASK;
-        }
-
-        const [packages] = await connection.query(
-            'SELECT income_per_task FROM packages WHERE name = ? AND is_active = TRUE',
-            [users[0].active_package]
-        );
-
-        return packages.length > 0 ? packages[0].income_per_task : INTERN.INCOME_PER_TASK;
-    }
-
-    async distributeTaskCommissions(connection, userId, taskEarning) {
-        const [upline] = await connection.query(
+    async distributeTaskCommissions(client, userId, taskEarning) {
+        // Get upline users up to 3 levels
+        const uplineResult = await client.query(
             `SELECT ancestor_id, level FROM user_tree 
-             WHERE descendant_id = ? AND level > 0 AND level <= 3
+             WHERE descendant_id = $1 AND level > 0 AND level <= 3
              ORDER BY level ASC`,
             [userId]
         );
 
+        const upline = uplineResult.rows;
+
+        // Commission rates for task earnings
         const rates = [
-            COMMISSION.TASK.LEVEL_1,
-            COMMISSION.TASK.LEVEL_2,
-            COMMISSION.TASK.LEVEL_3
+            COMMISSION.TASK.LEVEL_1,  // 5% for Level 1
+            COMMISSION.TASK.LEVEL_2,  // 2% for Level 2
+            COMMISSION.TASK.LEVEL_3   // 1% for Level 3
         ];
 
+        // Distribute commission to each upline user
         for (const uplineUser of upline) {
             const rate = rates[uplineUser.level - 1];
             const commissionAmount = taskEarning * rate;
 
-            await connection.query(
-                'UPDATE users SET balance = balance + ?, total_earned = total_earned + ? WHERE id = ?',
-                [commissionAmount, commissionAmount, uplineUser.ancestor_id]
+            // Credit commission to upline user
+            await client.query(
+                'UPDATE users SET balance = balance + $1, total_earned = total_earned + $1 WHERE id = $2',
+                [commissionAmount, uplineUser.ancestor_id]
             );
 
-            await connection.query(
+            // Record commission
+            await client.query(
                 `INSERT INTO commissions (from_user_id, to_user_id, type, level, amount, source_amount, percentage)
-                 VALUES (?, ?, 'task', ?, ?, ?, ?)`,
+                 VALUES ($1, $2, 'task', $3, $4, $5, $6)`,
                 [userId, uplineUser.ancestor_id, uplineUser.level, commissionAmount, taskEarning, rate * 100]
             );
 
-            const [uplineBalance] = await connection.query(
-                'SELECT balance FROM users WHERE id = ?',
+            // Get updated balance for transaction record
+            const uplineBalance = await client.query(
+                'SELECT balance FROM users WHERE id = $1',
                 [uplineUser.ancestor_id]
             );
 
-            await connection.query(
+            // Record transaction in ledger
+            await client.query(
                 `INSERT INTO transactions (user_id, type, amount, balance_after, category, reference_id, description)
-                 VALUES (?, 'credit', ?, ?, 'commission', ?, ?)`,
-                [uplineUser.ancestor_id, commissionAmount, uplineBalance[0].balance, userId,
+                 VALUES ($1, 'credit', $2, $3, 'commission', $4, $5)`,
+                [uplineUser.ancestor_id, commissionAmount, uplineBalance.rows[0].balance, userId,
                  `Task commission level ${uplineUser.level} from user #${userId}`]
             );
-        }
 
-        return upline;
+            // Send notification for commission received
+            if (commissionAmount > 0) {
+                await NotificationsService.create(
+                    uplineUser.ancestor_id,
+                    'Task Commission ✅',
+                    `You earned ${commissionAmount.toFixed(2)} ETB from a Level ${uplineUser.level} team member's task.`,
+                    'task',
+                    userId
+                );
+            }
+        }
     }
 
     async getTaskHistory(userId, page = 1, limit = 20) {
         const offset = (page - 1) * limit;
 
-        const [logs] = await pool.query(
-            'SELECT * FROM task_logs WHERE user_id = ? ORDER BY completed_at DESC LIMIT ? OFFSET ?',
+        // Get task logs for paginated history
+        const logsResult = await pool.query(
+            'SELECT * FROM task_logs WHERE user_id = $1 ORDER BY completed_at DESC LIMIT $2 OFFSET $3',
             [userId, limit, offset]
         );
 
-        const [[{ total }]] = await pool.query(
-            'SELECT COUNT(*) as total FROM task_logs WHERE user_id = ?',
+        // Get total count for pagination
+        const countResult = await pool.query(
+            'SELECT COUNT(*) as total FROM task_logs WHERE user_id = $1',
             [userId]
         );
 
+        const total = parseInt(countResult.rows[0].total);
+
         return {
-            logs,
-            pagination: { page, limit, total, pages: Math.ceil(total / limit) }
+            logs: logsResult.rows,
+            pagination: {
+                page,
+                limit,
+                total,
+                pages: Math.ceil(total / limit)
+            }
         };
     }
 
@@ -280,69 +319,78 @@ class TasksService {
         const today = new Date().toISOString().split('T')[0];
         const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
 
+        // Calculate week start (Monday)
         const now = new Date();
         const weekStart = new Date(now.setDate(now.getDate() - now.getDay() + 1))
             .toISOString().split('T')[0];
+
+        // Calculate month start
         const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
             .toISOString().split('T')[0];
 
-        const [
-            [todayEarnings],
-            [yesterdayEarnings],
-            [weekEarnings],
-            [monthEarnings],
-            [taskCommissions],
-            [referralCommissions],
-            [totalCommissions]
-        ] = await Promise.all([
-            pool.query(
-                'SELECT COALESCE(SUM(earned), 0) as amount FROM daily_tasks WHERE user_id = ? AND task_date = ?',
-                [userId, today]
-            ),
-            pool.query(
-                'SELECT COALESCE(SUM(earned), 0) as amount FROM daily_tasks WHERE user_id = ? AND task_date = ?',
-                [userId, yesterday]
-            ),
-            pool.query(
-                'SELECT COALESCE(SUM(earned), 0) as amount FROM daily_tasks WHERE user_id = ? AND task_date >= ?',
-                [userId, weekStart]
-            ),
-            pool.query(
-                'SELECT COALESCE(SUM(earned), 0) as amount FROM daily_tasks WHERE user_id = ? AND task_date >= ?',
-                [userId, monthStart]
-            ),
-            pool.query(
-                `SELECT COALESCE(SUM(amount), 0) as total FROM commissions 
-                 WHERE to_user_id = ? AND type = 'task'`,
-                [userId]
-            ),
-            pool.query(
-                `SELECT COALESCE(SUM(amount), 0) as total FROM commissions 
-                 WHERE to_user_id = ? AND type = 'referral'`,
-                [userId]
-            ),
-            pool.query(
-                'SELECT COALESCE(SUM(amount), 0) as total FROM commissions WHERE to_user_id = ?',
-                [userId]
-            )
-        ]);
+        // Get today's earnings
+        const todayResult = await pool.query(
+            'SELECT COALESCE(SUM(earned), 0) as amount FROM daily_tasks WHERE user_id = $1 AND task_date = $2',
+            [userId, today]
+        );
 
-        const [user] = await pool.query(
-            'SELECT total_earned, total_deposited, balance FROM users WHERE id = ?',
+        // Get yesterday's earnings
+        const yesterdayResult = await pool.query(
+            'SELECT COALESCE(SUM(earned), 0) as amount FROM daily_tasks WHERE user_id = $1 AND task_date = $2',
+            [userId, yesterday]
+        );
+
+        // Get this week's earnings
+        const weekResult = await pool.query(
+            'SELECT COALESCE(SUM(earned), 0) as amount FROM daily_tasks WHERE user_id = $1 AND task_date >= $2',
+            [userId, weekStart]
+        );
+
+        // Get this month's earnings
+        const monthResult = await pool.query(
+            'SELECT COALESCE(SUM(earned), 0) as amount FROM daily_tasks WHERE user_id = $1 AND task_date >= $2',
+            [userId, monthStart]
+        );
+
+        // Get total task commissions received
+        const taskCommissionResult = await pool.query(
+            `SELECT COALESCE(SUM(amount), 0) as total FROM commissions 
+             WHERE to_user_id = $1 AND type = 'task'`,
             [userId]
         );
 
+        // Get total referral commissions received
+        const referralCommissionResult = await pool.query(
+            `SELECT COALESCE(SUM(amount), 0) as total FROM commissions 
+             WHERE to_user_id = $1 AND type = 'referral'`,
+            [userId]
+        );
+
+        // Get total all commissions
+        const totalCommissionResult = await pool.query(
+            'SELECT COALESCE(SUM(amount), 0) as total FROM commissions WHERE to_user_id = $1',
+            [userId]
+        );
+
+        // Get user stats
+        const userResult = await pool.query(
+            'SELECT total_earned, total_deposited, balance FROM users WHERE id = $1',
+            [userId]
+        );
+
+        const user = userResult.rows[0] || { total_earned: 0, total_deposited: 0, balance: 0 };
+
         return {
-            todayEarnings: todayEarnings[0].amount,
-            yesterdayEarnings: yesterdayEarnings[0].amount,
-            weekEarnings: weekEarnings[0].amount,
-            monthEarnings: monthEarnings[0].amount,
-            totalEarned: user[0]?.total_earned || 0,
-            totalDeposited: user[0]?.total_deposited || 0,
-            balance: user[0]?.balance || 0,
-            taskCommissions: taskCommissions[0].total,
-            referralCommissions: referralCommissions[0].total,
-            totalCommissions: totalCommissions[0].total
+            todayEarnings: parseFloat(todayResult.rows[0].amount),
+            yesterdayEarnings: parseFloat(yesterdayResult.rows[0].amount),
+            weekEarnings: parseFloat(weekResult.rows[0].amount),
+            monthEarnings: parseFloat(monthResult.rows[0].amount),
+            totalEarned: parseFloat(user.total_earned),
+            totalDeposited: parseFloat(user.total_deposited),
+            balance: parseFloat(user.balance),
+            taskCommissions: parseFloat(taskCommissionResult.rows[0].total),
+            referralCommissions: parseFloat(referralCommissionResult.rows[0].total),
+            totalCommissions: parseFloat(totalCommissionResult.rows[0].total)
         };
     }
 }

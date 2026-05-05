@@ -6,49 +6,28 @@ const compression = require('compression');
 const path = require('path');
 const fs = require('fs');
 const errorHandler = require('./middleware/errorHandler');
+const Scheduler = require('./jobs/scheduler');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// CORS - Allow ALL origins for now
-// ALIEN CORS FIX - Must be BEFORE everything else
+// CORS headers
 app.use((req, res, next) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
-    res.setHeader('Access-Control-Max-Age', '86400');
-    
-    if (req.method === 'OPTIONS') {
-        return res.status(200).end();
-    }
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    if (req.method === 'OPTIONS') return res.status(200).end();
     next();
 });
 
-// THEN your existing cors() and everything else
 app.use(cors());
-// ... rest of server.js
-
-// Performance
 app.use(compression());
-
-// Body parsing
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 const publicPath = path.join(__dirname, 'public');
-if (!fs.existsSync(publicPath)) {
-    console.error('✗ public/ directory not found!');
-}
+app.use(express.static(publicPath));
 
-app.use(express.static(publicPath, {
-    setHeaders: (res, filePath) => {
-        if (filePath.endsWith('.css')) res.setHeader('Content-Type', 'text/css');
-        if (filePath.endsWith('.js')) res.setHeader('Content-Type', 'application/javascript');
-    }
-}));
-
-// ============ API ROUTES ============
 const routes = {
     '/api/auth': './modules/auth/auth.routes',
     '/api/packages': './modules/packages/packages.routes',
@@ -72,35 +51,16 @@ for (const [routePath, routeFile] of Object.entries(routes)) {
         const routeModule = require(routeFile);
         if (typeof routeModule === 'function' || (routeModule && routeModule.stack)) {
             app.use(routePath, routeModule);
-            console.log(`✓ Route loaded: ${routePath}`);
-        } else {
-            console.error(`✗ Invalid route: ${routePath}`);
+            console.log(`✓ ${routePath}`);
         }
-    } catch (error) {
-        console.error(`✗ Failed to load ${routePath}:`, error.message);
-    }
+    } catch (error) { console.error(`✗ ${routePath}:`, error.message); }
 }
 
-// Health check
-app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok', timestamp: new Date().toISOString() });
-});
-
-// SPA fallback
-app.get('*', (req, res) => {
-    if (req.path.startsWith('/api/')) {
-        return res.status(404).json({ success: false, message: 'API endpoint not found' });
-    }
-    const ext = path.extname(req.path);
-    if (ext) {
-        const filePath = path.join(publicPath, req.path);
-        if (!fs.existsSync(filePath)) return res.status(404).send('Not found');
-    }
-    res.sendFile(path.join(publicPath, 'index.html'));
-});
-
+app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
+app.get('*', (req, res) => res.sendFile(path.join(publicPath, 'index.html')));
 app.use(errorHandler);
 
 app.listen(PORT, () => {
-    console.log(`\n✓ Server running on http://localhost:${PORT}`);
+    console.log(`✓ Server on port ${PORT}`);
+    try { Scheduler.start(); } catch (e) { console.log('Scheduler not started (cron may not be installed)'); }
 });

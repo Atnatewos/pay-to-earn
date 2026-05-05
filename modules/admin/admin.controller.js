@@ -50,21 +50,18 @@ class AdminController {
             const { title, message, target } = req.body;
             if (!title || !message || !target) return Response.error(res, 'Title, message and target required', 400);
             const result = await AdminService.sendBroadcast(title, message, target, req.admin.id);
-            
-            // Send notification to all target users
             if (target === 'all' || target === 'users') {
-                const [users] = await pool.query('SELECT id FROM users WHERE status = "active"');
-                for (const user of users) {
+                const users = await pool.query('SELECT id FROM users WHERE status = $1', ['active']);
+                for (const user of users.rows) {
                     await NotificationsService.create(user.id, title, message, 'system');
                 }
             }
             if (target === 'all' || target === 'admins') {
-                const [admins] = await pool.query('SELECT id FROM admins WHERE status = "active"');
-                for (const admin of admins) {
+                const admins = await pool.query('SELECT id FROM admins WHERE status = $1', ['active']);
+                for (const admin of admins.rows) {
                     await NotificationsService.create(admin.id, title, message, 'system');
                 }
             }
-            
             await logAdminActivity(req.admin.id, 'broadcast', { title, target }, req.ip);
             return Response.success(res, result, `Broadcast sent to ${target}`);
         } catch (error) { next(error); }
@@ -78,7 +75,7 @@ class AdminController {
         catch (error) { next(error); }
     }
     async getLogs(req, res, next) {
-        try { const { page, limit, adminId } = req.query; const logs = await AdminService.getLogs(parseInt(page) || 1, parseInt(limit) || 50, adminId || null); return Response.success(res, logs); }
+        try { const logs = await AdminService.getLogs(); return Response.success(res, logs); }
         catch (error) { next(error); }
     }
 }

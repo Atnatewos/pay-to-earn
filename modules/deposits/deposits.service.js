@@ -5,86 +5,101 @@ const NotificationsService = require('../notifications/notifications.service');
 
 class DepositsService {
     async createDeposit(userId, amount, bankName, transactionId) {
+        // Validate amount limits
         if (amount < DEPOSIT.MIN || amount > DEPOSIT.MAX) {
             throw new Error(`Deposit must be between ${DEPOSIT.MIN} and ${DEPOSIT.MAX} ETB`);
         }
 
-        const [result] = await pool.query(
-            'INSERT INTO deposits (user_id, amount, bank_name, transaction_id) VALUES (?, ?, ?, ?)',
+        // Insert deposit request
+        const result = await pool.query(
+            'INSERT INTO deposits (user_id, amount, bank_name, transaction_id) VALUES ($1, $2, $3, $4) RETURNING id',
             [userId, amount, bankName, transactionId]
         );
 
-        return { id: result.insertId, status: 'pending' };
+        return { id: result.rows[0].id, status: 'pending' };
     }
 
     async verifyDeposit(depositId, adminId) {
-        const connection = await pool.getConnection();
+        const client = await pool.connect();
 
         try {
-            await connection.beginTransaction();
+            // Start transaction
+            await client.query('BEGIN');
 
-            const [deposits] = await connection.query(
-                'SELECT * FROM deposits WHERE id = ? AND status = "pending"',
-                [depositId]
+            // Get deposit and verify it's pending
+            const depositResult = await client.query(
+                'SELECT * FROM deposits WHERE id = $1 AND status = $2',
+                [depositId, 'pending']
             );
 
-            if (deposits.length === 0) {
+            if (depositResult.rows.length === 0) {
                 throw new Error('Deposit not found or already processed');
             }
 
-            const deposit = deposits[0];
+            const deposit = depositResult.rows[0];
 
-            await connection.query(
-                'UPDATE deposits SET status = "verified", verified_by = ?, verified_at = NOW() WHERE id = ?',
-                [adminId, depositId]
+            // Update deposit status to verified
+            await client.query(
+                'UPDATE deposits SET status = $1, verified_by = $2, verified_at = NOW() WHERE id = $3',
+                ['verified', adminId, depositId]
             );
 
-            await connection.query(
-                'UPDATE users SET balance = balance + ?, total_deposited = total_deposited + ? WHERE id = ?',
-                [deposit.amount, deposit.amount, deposit.user_id]
+            // Credit user balance and update total deposited
+            await client.query(
+                'UPDATE users SET balance = balance + $1, total_deposited = total_deposited + $1 WHERE id = $2',
+                [deposit.amount, deposit.user_id]
             );
 
-            const [userBalance] = await connection.query(
-                'SELECT balance FROM users WHERE id = ?',
+            // Get updated balance for transaction record
+            const userBalance = await client.query(
+                'SELECT balance FROM users WHERE id = $1',
                 [deposit.user_id]
             );
 
-            await connection.query(
+            // Record transaction in ledger
+            await client.query(
                 `INSERT INTO transactions (user_id, type, amount, balance_after, category, reference_id, description)
-                 VALUES (?, 'credit', ?, ?, 'deposit', ?, ?)`,
-                [deposit.user_id, deposit.amount, userBalance[0].balance, depositId, 'Deposit verified']
+                 VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+                [deposit.user_id, 'credit', deposit.amount, userBalance.rows[0].balance, 'deposit', depositId, 'Deposit verified']
             );
 
-            const [packages] = await connection.query(
-                'SELECT name FROM packages WHERE deposit_amount = ? AND is_active = TRUE',
+            // Find matching package for the deposit amount
+            const packageResult = await client.query(
+                'SELECT name FROM packages WHERE deposit_amount = $1 AND is_active = TRUE',
                 [deposit.amount]
             );
 
-            if (packages.length > 0) {
-                const packageName = packages[0].name;
+            // Activate package if amount matches a package
+            if (packageResult.rows.length > 0) {
+                const packageName = packageResult.rows[0].name;
 
-                await connection.query(
-                    'UPDATE user_packages SET is_active = FALSE WHERE user_id = ? AND is_active = TRUE',
+                // Deactivate any existing active package
+                await client.query(
+                    'UPDATE user_packages SET is_active = FALSE WHERE user_id = $1 AND is_active = TRUE',
                     [deposit.user_id]
                 );
 
-                await connection.query(
+                // Create new active package record
+                await client.query(
                     `INSERT INTO user_packages (user_id, package_name, deposit_amount, started_at, expires_at)
-                     VALUES (?, ?, ?, CURDATE(), DATE_ADD(CURDATE(), INTERVAL 30 DAY))`,
+                     VALUES ($1, $2, $3, CURRENT_DATE, CURRENT_DATE + INTERVAL '30 days')`,
                     [deposit.user_id, packageName, deposit.amount]
                 );
 
-                await connection.query(
-                    'UPDATE users SET active_package = ?, package_expiry = DATE_ADD(CURDATE(), INTERVAL 30 DAY) WHERE id = ?',
+                // Update user's active package and expiry
+                await client.query(
+                    'UPDATE users SET active_package = $1, package_expiry = CURRENT_DATE + INTERVAL \'30 days\' WHERE id = $2',
                     [packageName, deposit.user_id]
                 );
             }
 
-            const upline = await this.distributeReferralCommissions(connection, deposit.user_id, deposit.amount);
+            // Distribute referral commissions to upline (3 levels)
+            await this.distributeReferralCommissions(client, deposit.user_id, deposit.amount);
 
-            await connection.commit();
+            // Commit all changes
+            await client.query('COMMIT');
 
-            // Send notifications AFTER commit
+            // Send notification to depositor
             await NotificationsService.create(
                 deposit.user_id,
                 'Deposit Verified ✅',
@@ -93,83 +108,87 @@ class DepositsService {
                 depositId
             );
 
-            if (upline && upline.length > 0) {
-                const rates = [COMMISSION.REFERRAL.LEVEL_1, COMMISSION.REFERRAL.LEVEL_2, COMMISSION.REFERRAL.LEVEL_3];
-                for (const uplineUser of upline) {
-                    const rate = rates[uplineUser.level - 1];
-                    const commissionAmount = deposit.amount * rate;
-                    
-                    await NotificationsService.create(
-                        uplineUser.ancestor_id,
-                        'Referral Commission 💰',
-                        `You received ${commissionAmount.toFixed(2)} ETB from a Level ${uplineUser.level} referral deposit.`,
-                        'commission',
-                        deposit.user_id
-                    );
-                }
-            }
-
             return { success: true, message: 'Deposit verified and notifications sent' };
+
         } catch (error) {
-            await connection.rollback();
+            // Rollback all changes if anything fails
+            await client.query('ROLLBACK');
             throw error;
         } finally {
-            connection.release();
+            // Release the client back to pool
+            client.release();
         }
     }
 
-    async distributeReferralCommissions(connection, userId, amount) {
-        const [upline] = await connection.query(
+    async distributeReferralCommissions(client, userId, amount) {
+        // Get upline users up to 3 levels
+        const uplineResult = await client.query(
             `SELECT ancestor_id, level FROM user_tree 
-             WHERE descendant_id = ? AND level > 0 AND level <= 3
+             WHERE descendant_id = $1 AND level > 0 AND level <= 3
              ORDER BY level ASC`,
             [userId]
         );
 
+        const upline = uplineResult.rows;
+
+        // Commission rates for each level
         const rates = [
-            COMMISSION.REFERRAL.LEVEL_1,
-            COMMISSION.REFERRAL.LEVEL_2,
-            COMMISSION.REFERRAL.LEVEL_3
+            COMMISSION.REFERRAL.LEVEL_1,  // 10% for Level 1
+            COMMISSION.REFERRAL.LEVEL_2,  // 3% for Level 2
+            COMMISSION.REFERRAL.LEVEL_3   // 1% for Level 3
         ];
 
+        // Distribute commission to each upline user
         for (const uplineUser of upline) {
             const rate = rates[uplineUser.level - 1];
             const commissionAmount = amount * rate;
 
-            await connection.query(
-                'UPDATE users SET balance = balance + ?, total_earned = total_earned + ? WHERE id = ?',
-                [commissionAmount, commissionAmount, uplineUser.ancestor_id]
+            // Credit commission to upline user
+            await client.query(
+                'UPDATE users SET balance = balance + $1, total_earned = total_earned + $1 WHERE id = $2',
+                [commissionAmount, uplineUser.ancestor_id]
             );
 
-            await connection.query(
+            // Record commission
+            await client.query(
                 `INSERT INTO commissions (from_user_id, to_user_id, type, level, amount, source_amount, percentage)
-                 VALUES (?, ?, 'referral', ?, ?, ?, ?)`,
+                 VALUES ($1, $2, 'referral', $3, $4, $5, $6)`,
                 [userId, uplineUser.ancestor_id, uplineUser.level, commissionAmount, amount, rate * 100]
             );
 
-            const [uplineBalance] = await connection.query(
-                'SELECT balance FROM users WHERE id = ?',
+            // Get updated balance for transaction record
+            const uplineBalance = await client.query(
+                'SELECT balance FROM users WHERE id = $1',
                 [uplineUser.ancestor_id]
             );
 
-            await connection.query(
+            // Record transaction in ledger
+            await client.query(
                 `INSERT INTO transactions (user_id, type, amount, balance_after, category, reference_id, description)
-                 VALUES (?, 'credit', ?, ?, 'commission', ?, ?)`,
-                [uplineUser.ancestor_id, commissionAmount, uplineBalance[0].balance, userId,
+                 VALUES ($1, 'credit', $2, $3, 'commission', $4, $5)`,
+                [uplineUser.ancestor_id, commissionAmount, uplineBalance.rows[0].balance, userId,
                  `Referral commission level ${uplineUser.level} from user #${userId}`]
             );
-        }
 
-        return upline;
+            // Send notification to upline user
+            await NotificationsService.create(
+                uplineUser.ancestor_id,
+                'Referral Commission 💰',
+                `You received ${commissionAmount.toFixed(2)} ETB from a Level ${uplineUser.level} referral deposit.`,
+                'commission',
+                userId
+            );
+        }
     }
 
     async rejectDeposit(depositId, adminId, reason) {
-        const [result] = await pool.query(
-            'UPDATE deposits SET status = "rejected", verified_by = ?, rejection_reason = ?, verified_at = NOW() WHERE id = ? AND status = "pending"',
-            [adminId, reason, depositId]
+        // Update deposit status to rejected
+        const result = await pool.query(
+            'UPDATE deposits SET status = $1, verified_by = $2, rejection_reason = $3, verified_at = NOW() WHERE id = $4 AND status = $5',
+            ['rejected', adminId, reason, depositId, 'pending']
         );
 
-        if (result.affectedRows === 0) {
+        if (result.rowCount === 0) {
             throw new Error('Deposit not found or already processed');
         }
 
@@ -179,23 +198,33 @@ class DepositsService {
     async getPendingDeposits(page = 1, limit = 20) {
         const offset = (page - 1) * limit;
 
-        const [deposits] = await pool.query(
+        // Get pending deposits with user info
+        const depositsResult = await pool.query(
             `SELECT d.*, u.phone, u.full_name 
-            FROM deposits d 
-            JOIN users u ON d.user_id = u.id 
-            WHERE d.status = 'pending' 
-            ORDER BY d.created_at ASC 
-            LIMIT ? OFFSET ?`,
+             FROM deposits d 
+             JOIN users u ON d.user_id = u.id 
+             WHERE d.status = 'pending' 
+             ORDER BY d.created_at ASC 
+             LIMIT $1 OFFSET $2`,
             [limit, offset]
         );
 
-        const [[{ total }]] = await pool.query(
-            'SELECT COUNT(*) as total FROM deposits WHERE status = "pending"'
+        // Get total count for pagination
+        const countResult = await pool.query(
+            'SELECT COUNT(*) as total FROM deposits WHERE status = $1',
+            ['pending']
         );
 
+        const total = parseInt(countResult.rows[0].total);
+
         return {
-            deposits,
-            pagination: { page, limit, total, pages: Math.ceil(total / limit) }
+            deposits: depositsResult.rows,
+            pagination: {
+                page,
+                limit,
+                total,
+                pages: Math.ceil(total / limit)
+            }
         };
     }
 }

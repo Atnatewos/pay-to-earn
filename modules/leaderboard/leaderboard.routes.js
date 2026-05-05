@@ -8,9 +8,7 @@ router.get('/earners', authenticateUser, async (req, res, next) => {
         const { period = 'weekly', limit = 20 } = req.query;
         const leaders = await LeaderboardService.getTopEarners(period, parseInt(limit));
         return Response.success(res, leaders);
-    } catch (error) {
-        next(error);
-    }
+    } catch (error) { next(error); }
 });
 
 router.get('/recruiters', authenticateUser, async (req, res, next) => {
@@ -18,9 +16,7 @@ router.get('/recruiters', authenticateUser, async (req, res, next) => {
         const { period = 'monthly', limit = 20 } = req.query;
         const recruiters = await LeaderboardService.getTopRecruiters(period, parseInt(limit));
         return Response.success(res, recruiters);
-    } catch (error) {
-        next(error);
-    }
+    } catch (error) { next(error); }
 });
 
 module.exports = router;

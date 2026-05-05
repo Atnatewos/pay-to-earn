@@ -3,6 +3,7 @@ const pool = require('../../config/db');
 
 class SalaryService {
     constructor() {
+        // Define manager ranks and requirements
         this.ranks = [
             { name: 'Trainee Manager', levelA: 10, levelB: 0, levelC: 0, salary: 5000 },
             { name: 'Marketing Manager', levelA: 20, levelB: 30, levelC: 0, salary: 10000 },
@@ -13,28 +14,39 @@ class SalaryService {
     }
 
     async getUserTeamCounts(userId) {
-        const [levelA] = await pool.query(
-            'SELECT COUNT(*) as count FROM user_tree WHERE ancestor_id = ? AND level = 1',
+        // Count team members at each level
+        const levelAResult = await pool.query(
+            'SELECT COUNT(*) as count FROM user_tree WHERE ancestor_id = $1 AND level = 1',
             [userId]
         );
-        const [levelB] = await pool.query(
-            'SELECT COUNT(*) as count FROM user_tree WHERE ancestor_id = ? AND level = 2',
+
+        const levelBResult = await pool.query(
+            'SELECT COUNT(*) as count FROM user_tree WHERE ancestor_id = $1 AND level = 2',
             [userId]
         );
-        const [levelC] = await pool.query(
-            'SELECT COUNT(*) as count FROM user_tree WHERE ancestor_id = ? AND level = 3',
+
+        const levelCResult = await pool.query(
+            'SELECT COUNT(*) as count FROM user_tree WHERE ancestor_id = $1 AND level = 3',
             [userId]
         );
+
+        const a = parseInt(levelAResult.rows[0].count);
+        const b = parseInt(levelBResult.rows[0].count);
+        const c = parseInt(levelCResult.rows[0].count);
+
         return {
-            a: levelA[0].count,
-            b: levelB[0].count,
-            c: levelC[0].count,
-            total: levelA[0].count + levelB[0].count + levelC[0].count
+            a,
+            b,
+            c,
+            total: a + b + c
         };
     }
 
     async checkRankEligibility(userId) {
+        // Get user's current team counts
         const counts = await this.getUserTeamCounts(userId);
+
+        // Find which ranks the user qualifies for
         const eligibleRanks = [];
 
         for (const rank of this.ranks) {
@@ -51,8 +63,9 @@ class SalaryService {
     }
 
     async payMonthlySalary(userId) {
+        // Check if user qualifies for any rank
         const eligibility = await this.checkRankEligibility(userId);
-        
+
         if (!eligibility.highestRank) {
             return { qualified: false, message: 'Not qualified for any manager rank' };
         }
@@ -61,47 +74,50 @@ class SalaryService {
         const rank = eligibility.highestRank;
 
         // Check if already paid this month
-        const [existing] = await pool.query(
-            'SELECT id FROM manager_salaries WHERE user_id = ? AND month_year = ?',
+        const existingResult = await pool.query(
+            'SELECT id FROM manager_salaries WHERE user_id = $1 AND month_year = $2',
             [userId, monthYear]
         );
 
-        if (existing.length > 0) {
+        if (existingResult.rows.length > 0) {
             return { qualified: false, message: 'Salary already paid for this month' };
         }
 
-        const connection = await pool.getConnection();
-        try {
-            await connection.beginTransaction();
+        const client = await pool.connect();
 
-            // Record salary
-            await connection.query(
+        try {
+            await client.query('BEGIN');
+
+            // Record salary payment
+            await client.query(
                 `INSERT INTO manager_salaries 
                 (user_id, rank_name, monthly_salary, team_count_a, team_count_b, team_count_c, total_team, month_year)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-                [userId, rank.name, rank.salary, eligibility.currentCounts.a, 
-                 eligibility.currentCounts.b, eligibility.currentCounts.c, 
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+                [userId, rank.name, rank.salary, eligibility.currentCounts.a,
+                 eligibility.currentCounts.b, eligibility.currentCounts.c,
                  eligibility.currentCounts.total, monthYear]
             );
 
-            // Credit user
-            await connection.query(
-                'UPDATE users SET balance = balance + ?, total_earned = total_earned + ? WHERE id = ?',
-                [rank.salary, rank.salary, userId]
+            // Credit salary to user balance
+            await client.query(
+                'UPDATE users SET balance = balance + $1, total_earned = total_earned + $1 WHERE id = $2',
+                [rank.salary, userId]
             );
 
-            // Record transaction
-            const [userBalance] = await connection.query(
-                'SELECT balance FROM users WHERE id = ?', [userId]
+            // Get updated balance for transaction record
+            const userResult = await client.query(
+                'SELECT balance FROM users WHERE id = $1',
+                [userId]
             );
 
-            await connection.query(
+            // Record transaction in ledger
+            await client.query(
                 `INSERT INTO transactions (user_id, type, amount, balance_after, category, description)
-                 VALUES (?, 'credit', ?, ?, 'salary', ?)`,
-                [userId, rank.salary, userBalance[0].balance, `${rank.name} salary for ${monthYear}`]
+                 VALUES ($1, 'credit', $2, $3, 'salary', $4)`,
+                [userId, rank.salary, userResult.rows[0].balance, `${rank.name} salary for ${monthYear}`]
             );
 
-            await connection.commit();
+            await client.query('COMMIT');
 
             return {
                 qualified: true,
@@ -109,33 +125,42 @@ class SalaryService {
                 salary: rank.salary,
                 teamCounts: eligibility.currentCounts
             };
+
         } catch (error) {
-            await connection.rollback();
+            await client.query('ROLLBACK');
             throw error;
         } finally {
-            connection.release();
+            client.release();
         }
     }
 
     async getUserSalaryHistory(userId) {
-        const [salaries] = await pool.query(
-            'SELECT * FROM manager_salaries WHERE user_id = ? ORDER BY paid_at DESC',
+        // Get user's salary payment history
+        const result = await pool.query(
+            'SELECT * FROM manager_salaries WHERE user_id = $1 ORDER BY paid_at DESC',
             [userId]
         );
-        return salaries;
+
+        return result.rows;
     }
 
     async processAllSalaries() {
-        const [users] = await pool.query('SELECT id FROM users WHERE status = "active"');
+        // Get all active users
+        const usersResult = await pool.query(
+            'SELECT id FROM users WHERE status = $1',
+            ['active']
+        );
+
         const results = [];
-        
-        for (const user of users) {
+
+        // Process salary for each user
+        for (const user of usersResult.rows) {
             const result = await this.payMonthlySalary(user.id);
             if (result.qualified) {
                 results.push({ userId: user.id, ...result });
             }
         }
-        
+
         return results;
     }
 }

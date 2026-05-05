@@ -1,41 +1,17 @@
 // config/db.js
-const mysql = require('mysql2/promise');
+const { Pool } = require('pg');
 
-let pool;
+const pool = new Pool({
+    connectionString: process.env.DATABASE_URL || 'postgresql://postgres:postgres123@localhost:5432/pay_to_earn',
+    ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false,
+    max: 20,
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 10000
+});
 
-if (process.env.DATABASE_URL) {
-    // Railway provides DATABASE_URL automatically
-    const url = new URL(process.env.DATABASE_URL);
-    pool = mysql.createPool({
-        host: url.hostname,
-        port: url.port,
-        user: url.username,
-        password: url.password,
-        database: url.pathname.replace('/', ''),
-        waitForConnections: true,
-        connectionLimit: 5
-    });
-} else if (process.env.MYSQL_URL) {
-    const url = new URL(process.env.MYSQL_URL);
-    pool = mysql.createPool({
-        host: url.hostname,
-        port: url.port,
-        user: url.username,
-        password: url.password,
-        database: url.pathname.replace('/', ''),
-        waitForConnections: true,
-        connectionLimit: 5
-    });
-} else {
-    pool = mysql.createPool({
-        host: process.env.DB_HOST || 'localhost',
-        port: parseInt(process.env.DB_PORT) || 3306,
-        user: process.env.DB_USER || 'root',
-        password: process.env.DB_PASSWORD || '',
-        database: process.env.DB_NAME || 'earn_platform',
-        waitForConnections: true,
-        connectionLimit: 5
-    });
-}
+// Test connection
+pool.query('SELECT NOW()')
+    .then(result => console.log('✓ PostgreSQL connected at:', result.rows[0].now))
+    .catch(err => console.error('Database connection failed:', err.message));
 
 module.exports = pool;
