@@ -14,9 +14,9 @@ class AdminWithdrawals {
                     <p class="admin-page-subtitle">Process user withdrawal requests</p>
                 </div>
                 <div class="filter-tabs mb-4">
-                    <button class="filter-tab ${this.currentFilter==='pending'?'active':''}" onclick="AdminWithdrawals.switchFilter('pending')">Pending</button>
-                    <button class="filter-tab ${this.currentFilter==='completed'?'active':''}" onclick="AdminWithdrawals.switchFilter('completed')">Completed</button>
-                    <button class="filter-tab ${this.currentFilter==='rejected'?'active':''}" onclick="AdminWithdrawals.switchFilter('rejected')">Rejected</button>
+                    <button class="filter-tab ${this.currentFilter==='pending'?'active':''}" onclick="AdminWithdrawals.switchFilter('pending')">⏳ Pending</button>
+                    <button class="filter-tab ${this.currentFilter==='completed'?'active':''}" onclick="AdminWithdrawals.switchFilter('completed')">✅ Completed</button>
+                    <button class="filter-tab ${this.currentFilter==='rejected'?'active':''}" onclick="AdminWithdrawals.switchFilter('rejected')">❌ Rejected</button>
                 </div>
                 <div id="withdrawalsList"></div>
             </div>
@@ -61,8 +61,8 @@ class AdminWithdrawals {
                     </div>
                     ${w.status==='pending' ? `
                         <div class="flex gap-3">
-                            <button class="btn btn-success btn-block" onclick="AdminWithdrawals.approve(${w.id})">Approve</button>
-                            <button class="btn btn-danger btn-block" onclick="AdminWithdrawals.reject(${w.id})">Reject</button>
+                            <button class="btn btn-success btn-block" onclick="AdminWithdrawals.approve(${w.id})">✅ Approve</button>
+                            <button class="btn btn-danger btn-block" onclick="AdminWithdrawals.reject(${w.id})">❌ Reject</button>
                         </div>
                     ` : ''}
                 </div>
@@ -79,31 +79,55 @@ class AdminWithdrawals {
     }
 
     static async approve(id) {
-        if (!confirm('Approve this withdrawal?')) return;
+        const confirmed = await Dialog.confirm(
+            'This will mark the withdrawal as paid. The amount has already been deducted.',
+            'Confirm Payment',
+            '✅ Yes, Approve',
+            'Cancel'
+        );
+        if (!confirmed) return;
+
         const token = localStorage.getItem('admin_token');
         const apiUrl = APP_CONFIG.apiUrl;
-        await fetch(`${apiUrl}/withdrawals/${id}/process`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-            body: JSON.stringify({ status: 'completed' })
-        });
-        alert('Approved!');
-        router.navigate('/admin/withdrawals');
+        try {
+            await fetch(`${apiUrl}/withdrawals/${id}/process`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({ status: 'completed' })
+            });
+            await Dialog.alert('Withdrawal approved and marked as completed.', 'Payment Approved', 'success');
+            router.navigate('/admin/withdrawals');
+        } catch (error) {
+            await Dialog.alert('Failed to process withdrawal. Please try again.', 'Error', 'error');
+        }
     }
 
     static async reject(id) {
-        const reason = prompt('Rejection reason:');
+        const reason = await Dialog.prompt('Rejection Reason', 'Enter the reason for rejection...');
         if (!reason) return;
-        if (!confirm('Reject and refund?')) return;
+
+        const confirmed = await Dialog.confirm(
+            `Reject this withdrawal? The amount of will be refunded to the user's balance.`,
+            'Confirm Rejection',
+            '❌ Yes, Reject',
+            'Cancel',
+            'danger'
+        );
+        if (!confirmed) return;
+
         const token = localStorage.getItem('admin_token');
         const apiUrl = APP_CONFIG.apiUrl;
-        await fetch(`${apiUrl}/withdrawals/${id}/process`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-            body: JSON.stringify({ status: 'rejected', reason })
-        });
-        alert('Rejected. Balance refunded.');
-        router.navigate('/admin/withdrawals');
+        try {
+            await fetch(`${apiUrl}/withdrawals/${id}/process`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({ status: 'rejected', reason })
+            });
+            await Dialog.alert('Withdrawal rejected and balance has been refunded to the user.', 'Withdrawal Rejected', 'info');
+            router.navigate('/admin/withdrawals');
+        } catch (error) {
+            await Dialog.alert('Failed to reject withdrawal. Please try again.', 'Error', 'error');
+        }
     }
 
     unmount() {}
