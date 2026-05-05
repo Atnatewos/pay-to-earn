@@ -468,3 +468,97 @@ h6 { font-size: var(--font-lg); font-weight: 500; }
     from { opacity: 0; transform: translateY(10px); }
     to { opacity: 1; transform: translateY(0); }
 }
+
+/* ============================================
+   TELEGRAM MINI APP STYLES
+   ============================================ */
+
+/* Telegram theme variables */
+:root {
+    --tg-theme-bg-color: #FFFFFF;
+    --tg-theme-text-color: #2D3436;
+    --tg-theme-hint-color: #B2BEC3;
+    --tg-theme-link-color: #6C5CE7;
+    --tg-theme-button-color: #6C5CE7;
+    --tg-theme-button-text-color: #FFFFFF;
+    --tg-theme-secondary-bg-color: #F8F9FA;
+}
+
+/* Use Telegram theme colors when available */
+body {
+    background: var(--tg-theme-secondary-bg-color, var(--color-bg));
+    color: var(--tg-theme-text-color, var(--color-text));
+}
+
+/* Fix Telegram WebView height issue */
+html, body {
+    height: 100%;
+    overflow: hidden;
+}
+
+#app {
+    height: 100vh;
+    height: -webkit-fill-available;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Telegram Main Button spacing */
+.has-telegram-main-button {
+    padding-bottom: 80px !important;
+}
+
+/* Hide our navbar when in Telegram (Telegram provides its own) */
+body.telegram-mini-app .navbar {
+    display: none;
+}
+
+/* Adjust bottom nav for Telegram */
+body.telegram-mini-app .bottom-nav {
+    bottom: 16px;
+}
+
+/* Haptic feedback on buttons */
+.btn:active,
+.card:active,
+.list-item:active {
+    /* Telegram WebApp haptic */
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* Smooth page transitions for Telegram */
+.page {
+    animation: telegramSlideIn 0.25s ease;
+}
+
+@keyframes telegramSlideIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Fix iOS Safari bottom bar */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+    .bottom-nav {
+        padding-bottom: calc(var(--space-1) + env(safe-area-inset-bottom));
+    }
+    
+    .page {
+        padding-bottom: calc(100px + env(safe-area-inset-bottom));
+    }
+}
+
+/* Prevent pull-to-refresh in Telegram */
+body {
+    overscroll-behavior: none;
+    -webkit-overflow-scrolling: auto;
+}
+
+/* Status bar spacing for Telegram */
+.telegram-status-bar {
+    height: env(safe-area-inset-top, 0px);
+    background: var(--tg-theme-bg-color, var(--color-surface));
+    position: sticky;
+    top: 0;
+    z-index: 200;
+}
