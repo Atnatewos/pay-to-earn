@@ -10,7 +10,7 @@ const APP_CONFIG = {
     
     // API URLs - AUTO-DETECTS environment
     apiUrl: IS_PRODUCTION 
-        ? 'https://pay-to-earn-production.up.railway.app/api' 
+        ? 'https://pay-to-earn-api.onrender.com/api'  
         : '/api',
     
     frontendUrl: IS_PRODUCTION 
