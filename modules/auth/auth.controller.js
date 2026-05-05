@@ -1,8 +1,9 @@
+// modules/auth/auth.controller.js
 const AuthService = require('./auth.service');
 const Response = require('../../utils/response');
 
 const AuthController = {
-    async register(req, res, next) {
+    register: async (req, res, next) => {
         try {
             const { phone, password, fullName, referralCode } = req.body;
             if (!phone || !password) return Response.error(res, 'Phone and password are required', 400);
@@ -14,7 +15,8 @@ const AuthController = {
             next(error);
         }
     },
-    async login(req, res, next) {
+
+    login: async (req, res, next) => {
         try {
             const { phone, password } = req.body;
             if (!phone || !password) return Response.error(res, 'Phone and password are required', 400);
@@ -25,16 +27,24 @@ const AuthController = {
             next(error);
         }
     },
-    async getProfile(req, res, next) {
-        try { const profile = await AuthService.getUserProfile(req.user.id); return Response.success(res, profile); }
-        catch (error) { next(error); }
+
+    getProfile: async (req, res, next) => {
+        try {
+            const profile = await AuthService.getUserProfile(req.user.id);
+            return Response.success(res, profile);
+        } catch (error) {
+            next(error);
+        }
     },
-    async updateProfile(req, res, next) {
+
+    updateProfile: async (req, res, next) => {
         try {
             const { fullName, avatarUrl } = req.body;
             await AuthService.updateProfile(req.user.id, { fullName, avatarUrl });
             return Response.success(res, null, 'Profile updated');
-        } catch (error) { next(error); }
+        } catch (error) {
+            next(error);
+        }
     }
 };
 

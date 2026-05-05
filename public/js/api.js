@@ -1,6 +1,6 @@
 // public/js/api.js
 const API = {
-    base: (typeof APP_CONFIG !== 'undefined') ? APP_CONFIG.apiUrl : '/api',
+    base: APP_CONFIG.apiUrl,
     token: null,
 
     setToken(token) {
