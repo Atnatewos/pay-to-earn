@@ -2,7 +2,6 @@
 const IS_PRODUCTION = window.location.hostname !== 'localhost';
 
 const APP_CONFIG = {
-    // Platform name
     name: 'Pay to Earn',
     fullName: 'Pay to Earn Platform',
     tagline: 'Share & Earn',
@@ -10,22 +9,17 @@ const APP_CONFIG = {
     
     // API URLs - AUTO-DETECTS environment
     apiUrl: IS_PRODUCTION 
-        ? 'https://pay-to-earn-api.onrender.com/api'  
+        ? 'https://pay-to-earn-api.onrender.com/api' 
         : '/api',
     
     frontendUrl: IS_PRODUCTION 
         ? 'https://pay-to-earn.vercel.app' 
         : 'http://localhost:3000',
     
-    // Currency
     currency: 'ETB',
-    
-    // Bank Details
     bankName: 'CBE',
     bankAccount: '1000428407567',
     bankHolder: 'ATNATEWOS',
-    
-    // Contact
     supportPhone: '',
     supportEmail: '',
 };
