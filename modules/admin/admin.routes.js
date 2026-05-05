@@ -1,69 +1,44 @@
-// Delete user
-router.delete('/users/:id', authenticateAdmin, async (req, res, next) => {
-    try {
-        await pool.query('DELETE FROM users WHERE id = $1', [req.params.id]);
-        res.json({ success: true, message: 'User deleted' });
-    } catch (error) { next(error); }
-});
+// modules/admin/admin.routes.js
+const router = require('express').Router();
+const AdminController = require('./admin.controller');
+const { authenticateAdmin } = require('../../middleware/auth');
+const { authLimiter } = require('../../middleware/rateLimit');
+const { requirePermission } = require('../auth/auth.middleware');
+const pool = require('../../config/db');
 
-// Update user details
-router.put('/users/:id', authenticateAdmin, async (req, res, next) => {
-    try {
-        const { phone, fullName, password } = req.body;
-        const updates = [];
-        const values = [];
-        let i = 1;
-        
-        if (phone) { updates.push(`phone = $${i++}`); values.push(phone); }
-        if (fullName) { updates.push(`full_name = $${i++}`); values.push(fullName); }
-        if (password) {
-            const bcrypt = require('bcryptjs');
-            const hash = await bcrypt.hash(password, 12);
-            updates.push(`password_hash = $${i++}`);
-            values.push(hash);
-        }
-        
-        if (updates.length === 0) return res.json({ success: false, message: 'No updates' });
-        
-        values.push(req.params.id);
-        await pool.query(`UPDATE users SET ${updates.join(', ')} WHERE id = $${i}`, values);
-        res.json({ success: true, message: 'User updated' });
-    } catch (error) { next(error); }
-});
+// Public
+router.post('/login', authLimiter, AdminController.login);
 
-// Send notification to specific user
-router.post('/users/:id/notify', authenticateAdmin, async (req, res, next) => {
-    try {
-        const { title, message } = req.body;
-        const NotificationsService = require('../notifications/notifications.service');
-        await NotificationsService.create(req.params.id, title, message, 'system');
-        res.json({ success: true, message: 'Notification sent' });
-    } catch (error) { next(error); }
-});
+// Dashboard
+router.get('/dashboard', authenticateAdmin, AdminController.getDashboard);
 
-// Send popup/alert to specific user (stored as notification with popup flag)
-router.post('/users/:id/alert', authenticateAdmin, async (req, res, next) => {
-    try {
-        const { title, message } = req.body;
-        const NotificationsService = require('../notifications/notifications.service');
-        // Store as high-priority notification that shows as popup
-        await pool.query(
-            'INSERT INTO notifications (user_id, title, message, type, is_read) VALUES ($1, $2, $3, $4, $5)',
-            [req.params.id, title, message, 'alert', false]
-        );
-        res.json({ success: true, message: 'Alert sent' });
-    } catch (error) { next(error); }
-});
+// Users CRUD
+router.get('/users', authenticateAdmin, AdminController.getUsers);
+router.get('/users/:id', authenticateAdmin, AdminController.getUserById);
+router.put('/users/:id', authenticateAdmin, AdminController.updateUser);
+router.delete('/users/:id', authenticateAdmin, AdminController.deleteUser);
+router.post('/users/:id/suspend', authenticateAdmin, AdminController.suspendUser);
+router.post('/users/:id/activate', authenticateAdmin, AdminController.activateUser);
+router.post('/users/:id/notify', authenticateAdmin, AdminController.notifyUser);
 
-// Send to all users
-router.post('/notify-all', authenticateAdmin, async (req, res, next) => {
-    try {
-        const { title, message } = req.body;
-        const users = await pool.query('SELECT id FROM users WHERE status = $1', ['active']);
-        const NotificationsService = require('../notifications/notifications.service');
-        for (const user of users.rows) {
-            await NotificationsService.create(user.id, title, message, 'system');
-        }
-        res.json({ success: true, message: `Sent to ${users.rows.length} users` });
-    } catch (error) { next(error); }
-});
+// Admins
+router.post('/admins', authenticateAdmin, AdminController.createAdmin);
+
+// Features
+router.get('/features', authenticateAdmin, AdminController.getFeatures);
+router.post('/features/:featureKey/toggle', authenticateAdmin, AdminController.toggleFeature);
+
+// Broadcast
+router.post('/broadcast', authenticateAdmin, AdminController.sendBroadcast);
+router.get('/broadcasts', authenticateAdmin, AdminController.getBroadcasts);
+
+// Logs
+router.get('/logs', authenticateAdmin, AdminController.getLogs);
+
+// Withdrawals
+router.get('/withdrawals', authenticateAdmin, AdminController.getWithdrawals);
+
+// Salary history
+router.get('/salary/history', authenticateAdmin, AdminController.getSalaryHistory);
+
+module.exports = router;

@@ -1,82 +1,204 @@
+// modules/admin/admin.controller.js
 const AdminService = require('./admin.service');
 const { logAdminActivity } = require('../../utils/logger');
 const NotificationsService = require('../notifications/notifications.service');
 const Response = require('../../utils/response');
 const pool = require('../../config/db');
+const bcrypt = require('bcryptjs');
 
 class AdminController {
-    async login(req, res, next) {
+    // Login
+    async login(req, res) {
         try {
             const { username, password } = req.body;
-            if (!username || !password) return Response.error(res, 'Username and password required', 400);
+            if (!username || !password) return res.json({ success: false, message: 'Username and password required' });
             const result = await AdminService.login(username, password);
-            await logAdminActivity(result.admin.id, 'login', null, req.ip);
-            return Response.success(res, result, 'Login successful');
+            return res.json({ success: true, data: result });
         } catch (error) {
-            if (error.message === 'Invalid credentials') return Response.error(res, error.message, 401);
-            next(error);
+            return res.json({ success: false, message: error.message || 'Login failed' });
         }
     }
-    async createAdmin(req, res, next) {
+
+    // Dashboard
+    async getDashboard(req, res) {
         try {
-            const { username, password, role } = req.body;
-            const result = await AdminService.createAdmin(req.admin.id, username, password, role);
-            await logAdminActivity(req.admin.id, 'admin_created', { username, role }, req.ip);
-            return Response.success(res, result, 'Admin created', 201);
-        } catch (error) { next(error); }
+            const stats = await AdminService.getDashboard();
+            return res.json({ success: true, data: stats });
+        } catch (error) {
+            return res.json({ success: false, message: 'Failed to load dashboard' });
+        }
     }
-    async getDashboard(req, res, next) {
-        try { const stats = await AdminService.getDashboard(); return Response.success(res, stats); }
-        catch (error) { next(error); }
-    }
-    async getUsers(req, res, next) {
+
+    // Get users
+    async getUsers(req, res) {
         try {
             const { page, limit, search, status } = req.query;
             const result = await AdminService.getUsers(parseInt(page) || 1, parseInt(limit) || 20, search || '', status || '');
-            return Response.paginated(res, result.users, result.pagination);
-        } catch (error) { next(error); }
+            return res.json({ success: true, data: result.users, pagination: result.pagination });
+        } catch (error) {
+            return res.json({ success: false, message: 'Failed to load users' });
+        }
     }
-    async toggleFeature(req, res, next) {
+
+    // Get single user
+    async getUserById(req, res) {
         try {
-            const { featureKey } = req.params;
-            const { isEnabled } = req.body;
-            const result = await AdminService.toggleSystemFeature(featureKey, isEnabled, req.admin.id);
-            await logAdminActivity(req.admin.id, 'feature_toggle', { featureKey, isEnabled }, req.ip);
-            return Response.success(res, result, `Feature ${isEnabled ? 'enabled' : 'disabled'}`);
-        } catch (error) { next(error); }
+            const result = await pool.query('SELECT * FROM users WHERE id = $1', [req.params.id]);
+            if (result.rows.length === 0) return res.json({ success: false, message: 'User not found' });
+            return res.json({ success: true, data: result.rows[0] });
+        } catch (error) {
+            return res.json({ success: false, message: 'Failed to load user' });
+        }
     }
-    async sendBroadcast(req, res, next) {
+
+    // Update user
+    async updateUser(req, res) {
+        try {
+            const { phone, fullName, password } = req.body;
+            const fields = [];
+            const values = [];
+            let i = 1;
+            if (phone) { fields.push(`phone = $${i++}`); values.push(phone); }
+            if (fullName) { fields.push(`full_name = $${i++}`); values.push(fullName); }
+            if (password) { const hash = await bcrypt.hash(password, 12); fields.push(`password_hash = $${i++}`); values.push(hash); }
+            if (fields.length === 0) return res.json({ success: false, message: 'No fields to update' });
+            values.push(req.params.id);
+            await pool.query(`UPDATE users SET ${fields.join(', ')} WHERE id = $${i}`, values);
+            return res.json({ success: true, message: 'User updated' });
+        } catch (error) {
+            return res.json({ success: false, message: 'Failed to update user' });
+        }
+    }
+
+    // Delete user
+    async deleteUser(req, res) {
+        try {
+            await pool.query('DELETE FROM users WHERE id = $1', [req.params.id]);
+            return res.json({ success: true, message: 'User deleted' });
+        } catch (error) {
+            return res.json({ success: false, message: 'Failed to delete user' });
+        }
+    }
+
+    // Suspend user
+    async suspendUser(req, res) {
+        try {
+            const { action, reason } = req.body;
+            const status = action === 'ban' ? 'banned' : 'suspended';
+            await pool.query('UPDATE users SET status = $1 WHERE id = $2', [status, req.params.id]);
+            return res.json({ success: true, message: `User ${action}ed` });
+        } catch (error) {
+            return res.json({ success: false, message: 'Failed to suspend user' });
+        }
+    }
+
+    // Activate user
+    async activateUser(req, res) {
+        try {
+            await pool.query('UPDATE users SET status = $1 WHERE id = $2', ['active', req.params.id]);
+            return res.json({ success: true, message: 'User activated' });
+        } catch (error) {
+            return res.json({ success: false, message: 'Failed to activate user' });
+        }
+    }
+
+    // Notify user
+    async notifyUser(req, res) {
+        try {
+            const { title, message } = req.body;
+            await NotificationsService.create(req.params.id, title, message, 'system');
+            return res.json({ success: true, message: 'Notification sent' });
+        } catch (error) {
+            return res.json({ success: false, message: 'Failed to send notification' });
+        }
+    }
+
+    // Create admin
+    async createAdmin(req, res) {
+        try {
+            const { username, password, role } = req.body;
+            const result = await AdminService.createAdmin(req.admin.id, username, password, role);
+            return res.json({ success: true, data: result });
+        } catch (error) {
+            return res.json({ success: false, message: error.message });
+        }
+    }
+
+    // Features
+    async getFeatures(req, res) {
+        try {
+            const result = await pool.query('SELECT * FROM system_features');
+            return res.json({ success: true, data: result.rows });
+        } catch (error) {
+            return res.json({ success: false, message: 'Failed to load features' });
+        }
+    }
+
+    async toggleFeature(req, res) {
+        try {
+            const { isEnabled } = req.body;
+            await pool.query('UPDATE system_features SET is_enabled = $1 WHERE feature_key = $2', [isEnabled, req.params.featureKey]);
+            return res.json({ success: true });
+        } catch (error) {
+            return res.json({ success: false, message: 'Failed to toggle' });
+        }
+    }
+
+    // Broadcast
+    async sendBroadcast(req, res) {
         try {
             const { title, message, target } = req.body;
-            if (!title || !message || !target) return Response.error(res, 'Title, message and target required', 400);
             const result = await AdminService.sendBroadcast(title, message, target, req.admin.id);
-            if (target === 'all' || target === 'users') {
-                const users = await pool.query('SELECT id FROM users WHERE status = $1', ['active']);
-                for (const user of users.rows) {
-                    await NotificationsService.create(user.id, title, message, 'system');
-                }
-            }
-            if (target === 'all' || target === 'admins') {
-                const admins = await pool.query('SELECT id FROM admins WHERE status = $1', ['active']);
-                for (const admin of admins.rows) {
-                    await NotificationsService.create(admin.id, title, message, 'system');
-                }
-            }
-            await logAdminActivity(req.admin.id, 'broadcast', { title, target }, req.ip);
-            return Response.success(res, result, `Broadcast sent to ${target}`);
-        } catch (error) { next(error); }
+            return res.json({ success: true, data: result });
+        } catch (error) {
+            return res.json({ success: false, message: 'Failed to send broadcast' });
+        }
     }
-    async getBroadcasts(req, res, next) {
-        try { const broadcasts = await AdminService.getBroadcasts(); return Response.success(res, broadcasts); }
-        catch (error) { next(error); }
+
+    async getBroadcasts(req, res) {
+        try {
+            const result = await pool.query("SELECT * FROM broadcasts WHERE is_active = TRUE ORDER BY created_at DESC LIMIT 20");
+            return res.json({ success: true, data: result.rows });
+        } catch (error) {
+            return res.json({ success: false, message: 'Failed to load broadcasts' });
+        }
     }
-    async getFeatures(req, res, next) {
-        try { const features = await AdminService.getSystemFeatures(); return Response.success(res, features); }
-        catch (error) { next(error); }
+
+    // Logs
+    async getLogs(req, res) {
+        try {
+            const result = await pool.query("SELECT al.*, a.username FROM admin_logs al JOIN admins a ON al.admin_id = a.id ORDER BY al.created_at DESC LIMIT 50");
+            return res.json({ success: true, data: result.rows });
+        } catch (error) {
+            return res.json({ success: false, message: 'Failed to load logs' });
+        }
     }
-    async getLogs(req, res, next) {
-        try { const logs = await AdminService.getLogs(); return Response.success(res, logs); }
-        catch (error) { next(error); }
+
+    // Withdrawals
+    async getWithdrawals(req, res) {
+        try {
+            const { status = 'pending' } = req.query;
+            const result = await pool.query(
+                `SELECT w.*, u.phone, u.full_name, ba.bank_name, ba.account_number 
+                 FROM withdrawals w JOIN users u ON w.user_id = u.id 
+                 JOIN bank_accounts ba ON w.bank_account_id = ba.id 
+                 WHERE w.status = $1 ORDER BY w.created_at DESC LIMIT 50`,
+                [status]
+            );
+            return res.json({ success: true, data: result.rows });
+        } catch (error) {
+            return res.json({ success: false, message: 'Failed to load withdrawals' });
+        }
+    }
+
+    // Salary history
+    async getSalaryHistory(req, res) {
+        try {
+            const result = await pool.query("SELECT ms.*, u.phone FROM manager_salaries ms JOIN users u ON ms.user_id = u.id ORDER BY ms.paid_at DESC LIMIT 50");
+            return res.json({ success: true, data: result.rows });
+        } catch (error) {
+            return res.json({ success: false, message: 'Failed to load salary history' });
+        }
     }
 }
 
