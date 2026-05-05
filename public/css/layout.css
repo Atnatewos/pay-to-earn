@@ -739,3 +739,67 @@
     }
 }
 
+/* Add to public/css/layout.css */
+
+/* Make it look exactly like a mobile app */
+@media (max-width: 768px) {
+    body {
+        -webkit-tap-highlight-color: transparent;
+        -webkit-user-select: none;
+        user-select: none;
+        overscroll-behavior: none;
+        position: fixed;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+    }
+
+    #app {
+        height: 100vh;
+        overflow-y: auto;
+        overflow-x: hidden;
+        -webkit-overflow-scrolling: touch;
+        padding-bottom: env(safe-area-inset-bottom, 20px);
+    }
+
+    .page {
+        padding: 12px;
+        padding-bottom: 100px;
+        max-width: 100%;
+    }
+
+    /* Safe area for notched phones */
+    .navbar {
+        padding-top: env(safe-area-inset-top, 12px);
+    }
+
+    .bottom-nav {
+        padding-bottom: env(safe-area-inset-bottom, 8px);
+    }
+
+    /* Card touch feedback */
+    .card:active,
+    .stat-card-home:active,
+    .action-card:active {
+        transform: scale(0.97);
+        transition: transform 0.1s ease;
+    }
+
+    /* Native-like inputs */
+    input, select, textarea, button {
+        -webkit-appearance: none;
+        appearance: none;
+        font-size: 16px !important;
+    }
+
+    /* Scrollbar hidden */
+    ::-webkit-scrollbar {
+        display: none;
+    }
+
+    /* Loading skeleton */
+    .skeleton {
+        border-radius: 12px;
+    }
+}
+
