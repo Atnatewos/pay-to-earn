@@ -2,10 +2,10 @@
 const IS_PRODUCTION = window.location.hostname !== 'localhost';
 
 const APP_CONFIG = {
-    name: 'Pay to Earn',
-    fullName: 'Pay to Earn Platform',
+    name: 'THERON',
+    fullName: 'THERON Pay to Earn Platform',
     tagline: 'Share & Earn',
-    adminName: 'Pay to Earn Admin',
+    adminName: 'THERON Admin',
     
     // API URLs - AUTO-DETECTS environment
     apiUrl: IS_PRODUCTION 
