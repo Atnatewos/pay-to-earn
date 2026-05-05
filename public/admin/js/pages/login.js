@@ -40,7 +40,6 @@ class AdminLogin {
             const password = document.getElementById('password').value;
 
             try {
-                // Use APP_CONFIG for the API URL
                 const apiUrl = (typeof APP_CONFIG !== 'undefined') ? APP_CONFIG.apiUrl : '/api';
                 const response = await fetch(`${apiUrl}/admin/login`, {
                     method: 'POST',
@@ -54,10 +53,10 @@ class AdminLogin {
                     localStorage.setItem('admin_data', JSON.stringify(data.data.admin));
                     window.location.hash = '#/admin/dashboard';
                 } else {
-                    alert(data.message || 'Login failed');
+                    await Dialog.alert(data.message || 'Invalid credentials', 'Login Failed', 'error');
                 }
             } catch (error) {
-                alert('Login failed. Please try again.');
+                await Dialog.alert('Login failed. Please check your connection and try again.', 'Connection Error', 'error');
             }
         });
     }
