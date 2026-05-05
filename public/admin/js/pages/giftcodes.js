@@ -61,7 +61,7 @@ class AdminGiftCodes {
         }
 
         try {
-            const response = await fetch('/api/giftcodes/create', {
+            const response = await AdminAPI.post('/giftcodes/create', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -109,7 +109,7 @@ class AdminGiftCodes {
 
     async loadCodes() {
         try {
-            const response = await fetch('/api/giftcodes/admin/list', {
+            const response = await AdminAPI.post('/giftcodes/admin/list', {
                 headers: { 'Authorization': `Bearer ${localStorage.getItem('admin_token')}` }
             });
             const data = await response.json();

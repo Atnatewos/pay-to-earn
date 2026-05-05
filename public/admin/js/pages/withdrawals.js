@@ -166,7 +166,7 @@ class AdminWithdrawals {
         );
         if (!confirmed) return;
         const token = localStorage.getItem('admin_token');
-        await fetch('/api/withdrawals/bulk-process', {
+        await AdminAPI.post('/withdrawals/bulk-process', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
             body: JSON.stringify({ ids: instance.selectedIds, action: 'completed' })
@@ -192,7 +192,7 @@ class AdminWithdrawals {
         );
         if (!confirmed) return;
         const token = localStorage.getItem('admin_token');
-        await fetch('/api/withdrawals/bulk-process', {
+        await AdminAPI.post('/withdrawals/bulk-process', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
             body: JSON.stringify({ ids: instance.selectedIds, action: 'rejected', reason })
@@ -218,7 +218,7 @@ class AdminWithdrawals {
         if (!confirmed) return;
         const token = localStorage.getItem('admin_token');
         try {
-            const res = await fetch(`/api/withdrawals/${id}/process`, {
+            const res = await AdminAPI.post(`/withdrawals/${id}/process`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                 body: JSON.stringify({ status: 'completed' })
@@ -246,7 +246,7 @@ class AdminWithdrawals {
         if (!confirmed) return;
         const token = localStorage.getItem('admin_token');
         try {
-            const res = await fetch(`/api/withdrawals/${id}/process`, {
+            const res = await AdminAPI.post(`/withdrawals/${id}/process`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                 body: JSON.stringify({ status: 'rejected', reason })

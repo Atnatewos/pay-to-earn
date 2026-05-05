@@ -8,7 +8,7 @@ class AdminDeposits {
         AdminSidebar.render('/admin/deposits');
 
         try {
-            const data = await fetch('/api/deposits/pending', {
+            const data = await AdminAPI.get('/deposits/pending', {
                 headers: { 'Authorization': `Bearer ${localStorage.getItem('admin_token')}` }
             }).then(r => r.json());
 
@@ -85,7 +85,7 @@ class AdminDeposits {
         if (!confirmed) return;
 
         const token = localStorage.getItem('admin_token');
-        await fetch(`/api/deposits/${id}/verify`, {
+        await AdminAPI.post(`/deposits/${id}/verify`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }
         });
@@ -101,7 +101,7 @@ class AdminDeposits {
         if (!confirmed) return;
 
         const token = localStorage.getItem('admin_token');
-        await fetch(`/api/deposits/${id}/reject`, {
+        await AdminAPI.post(`/deposits/${id}/reject`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
             body: JSON.stringify({ reason })

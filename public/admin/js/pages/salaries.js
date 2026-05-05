@@ -68,7 +68,7 @@ class AdminSalaries {
 
     async loadHistory() {
         try {
-            const data = await fetch('/api/admin/salary/history', {
+            const data = await AdminAPI.get('/salary/history', {
                 headers: { 'Authorization': `Bearer ${localStorage.getItem('admin_token')}` }
             }).then(r => r.json());
 
@@ -105,7 +105,7 @@ class AdminSalaries {
         
         const token = localStorage.getItem('admin_token');
         try {
-            const data = await fetch('/api/salary/process-all', {
+            const data = await AdminAPI.post('/salary/process-all', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }
             }).then(r => r.json());
