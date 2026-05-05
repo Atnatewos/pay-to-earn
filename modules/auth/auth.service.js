@@ -61,7 +61,22 @@ class AuthService {
         const result = await pool.query('SELECT * FROM users WHERE phone = $1', [phone]);
         if (result.rows.length === 0) throw new Error('Invalid phone or password');
         const user = result.rows[0];
-        if (user.status !== 'active') throw new Error('Account is suspended.');
+        // In the login method, after checking status:
+        if (user.status !== 'active') {
+            // Check for admin alert notifications
+            const alerts = await pool.query(
+                "SELECT * FROM notifications WHERE user_id = $1 AND type = 'alert' AND is_read = FALSE ORDER BY created_at DESC LIMIT 1",
+                [user.id]
+            );
+            
+            let alertMessage = 'Your account has been suspended.';
+            if (alerts.rows.length > 0) {
+                alertMessage = alerts.rows[0].message;
+                await pool.query("UPDATE notifications SET is_read = TRUE WHERE id = $1", [alerts.rows[0].id]);
+            }
+            
+            throw new Error(alertMessage);
+        }
         const validPassword = await bcrypt.compare(password, user.password_hash);
         if (!validPassword) throw new Error('Invalid phone or password');
         const token = jwt.sign({ id: user.id, phone: user.phone, isAdmin: false }, JWT.SECRET, { expiresIn: JWT.EXPIRES_IN });
