@@ -31,71 +31,46 @@ class ProfilePage {
                 <div class="card mb-4">
                     <div class="list-item" onclick="router.navigate('/team')">
                         <div class="list-item-icon" style="background: #FFF0F6;">👥</div>
-                        <div class="list-item-content">
-                            <div class="list-item-title">My Team</div>
-                            <div class="list-item-subtitle">View referrals & network</div>
-                        </div>
-                        <span>→</span>
+                        <div class="list-item-content"><div class="list-item-title">My Team</div><div class="list-item-subtitle">View referrals & network</div></div><span>→</span>
                     </div>
                     <hr class="divider">
                     <div class="list-item" onclick="ProfilePage.showBankAccounts()">
                         <div class="list-item-icon" style="background: #F0FCFC;">🏦</div>
-                        <div class="list-item-content">
-                            <div class="list-item-title">Bank Accounts</div>
-                            <div class="list-item-subtitle">Manage withdrawal accounts</div>
-                        </div>
-                        <span>→</span>
+                        <div class="list-item-content"><div class="list-item-title">Bank Accounts</div><div class="list-item-subtitle">Manage withdrawal accounts</div></div><span>→</span>
                     </div>
                     <hr class="divider">
                     <div class="list-item" onclick="router.navigate('/giftcode')">
                         <div class="list-item-icon" style="background: #FFF8E1;">🎁</div>
-                        <div class="list-item-content">
-                            <div class="list-item-title">Redeem Gift Code</div>
-                            <div class="list-item-subtitle">Enter promotional code</div>
-                        </div>
-                        <span>→</span>
+                        <div class="list-item-content"><div class="list-item-title">Redeem Gift Code</div><div class="list-item-subtitle">Enter promotional code</div></div><span>→</span>
                     </div>
                     <hr class="divider">
                     <div class="list-item" onclick="router.navigate('/deposit')">
                         <div class="list-item-icon" style="background: #F4F2FF;">💳</div>
-                        <div class="list-item-content">
-                            <div class="list-item-title">Deposit History</div>
-                            <div class="list-item-subtitle">View your deposits</div>
-                        </div>
-                        <span>→</span>
+                        <div class="list-item-content"><div class="list-item-title">Deposit History</div><div class="list-item-subtitle">View your deposits</div></div><span>→</span>
                     </div>
                     <hr class="divider">
                     <div class="list-item" onclick="router.navigate('/withdraw')">
                         <div class="list-item-icon" style="background: #E6F9F4;">💸</div>
-                        <div class="list-item-content">
-                            <div class="list-item-title">Withdrawal History</div>
-                            <div class="list-item-subtitle">View your withdrawals</div>
-                        </div>
-                        <span>→</span>
+                        <div class="list-item-content"><div class="list-item-title">Withdrawal History</div><div class="list-item-subtitle">View your withdrawals</div></div><span>→</span>
                     </div>
                     <hr class="divider">
                     <div class="list-item" onclick="router.navigate('/earnings')">
                         <div class="list-item-icon" style="background: #FFF5F5;">💰</div>
-                        <div class="list-item-content">
-                            <div class="list-item-title">Earnings</div>
-                            <div class="list-item-subtitle">View all earnings & commissions</div>
-                        </div>
-                        <span>→</span>
+                        <div class="list-item-content"><div class="list-item-title">Earnings</div><div class="list-item-subtitle">View all earnings & commissions</div></div><span>→</span>
                     </div>
                     <hr class="divider">
                     <div class="list-item" onclick="router.navigate('/leaderboard')">
                         <div class="list-item-icon" style="background: #FFF8E1;">🏆</div>
-                        <div class="list-item-content">
-                            <div class="list-item-title">Leaderboard</div>
-                            <div class="list-item-subtitle">Top earners & recruiters</div>
-                        </div>
-                        <span>→</span>
+                        <div class="list-item-content"><div class="list-item-title">Leaderboard</div><div class="list-item-subtitle">Top earners & recruiters</div></div><span>→</span>
+                    </div>
+                    <hr class="divider">
+                    <div class="list-item" onclick="router.navigate('/support')">
+                        <div class="list-item-icon" style="background: #FFF0F0;">💬</div>
+                        <div class="list-item-content"><div class="list-item-title">Customer Support</div><div class="list-item-subtitle">Get help via Telegram</div></div><span>→</span>
                     </div>
                 </div>
 
-                <button class="btn btn-danger btn-block" onclick="ProfilePage.logout()">
-                    🚪 Logout
-                </button>
+                <button class="btn btn-danger btn-block" onclick="ProfilePage.logout()">🚪 Logout</button>
             `;
         } catch (error) {
             document.getElementById('profileContent').innerHTML = `<div class="empty-state"><p>Failed to load</p><button class="btn btn-primary" onclick="router.navigate('/profile')">Retry</button></div>`;
@@ -105,7 +80,6 @@ class ProfilePage {
     static async showEditProfile() {
         const data = await API.get('/auth/profile');
         const user = data.data;
-        
         const overlay = document.createElement('div');
         overlay.className = 'modal-overlay';
         overlay.innerHTML = `
@@ -125,7 +99,6 @@ class ProfilePage {
         `;
         overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
         document.body.appendChild(overlay);
-
         document.querySelectorAll('.avatar-option').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -133,7 +106,6 @@ class ProfilePage {
                 btn.classList.add('btn-primary');
             });
         });
-
         document.getElementById('editProfileForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const fullName = document.getElementById('editFullName').value;
@@ -146,9 +118,9 @@ class ProfilePage {
                     body: JSON.stringify({ fullName, avatarUrl })
                 });
                 overlay.remove();
-                Toast.show('Profile updated successfully!');
+                Toast.show('Profile updated!');
                 router.navigate('/profile');
-            } catch (error) { Toast.show('Failed to update profile', 'error'); }
+            } catch (error) { Toast.show('Failed to update', 'error'); }
         });
     }
 
@@ -157,54 +129,22 @@ class ProfilePage {
             <div class="modal-header"><h3 class="modal-title">🏦 Bank Accounts</h3><button class="modal-close" onclick="this.closest('.modal-overlay').remove()">×</button></div>
             <div id="bankContent"><div class="loader"><div class="spinner"></div></div></div>
             <form id="addBankForm" class="mt-4">
-                <div class="form-group"><label class="form-label">Bank Name</label>
-                    <select class="form-select" id="bankName">
-                        <option value="CBE">CBE - Commercial Bank of Ethiopia</option>
-                        <option value="Awash">Awash Bank</option>
-                        <option value="Dashen">Dashen Bank</option>
-                        <option value="Abyssinia">Abyssinia Bank</option>
-                        <option value="Wegagen">Wegagen Bank</option>
-                        <option value="Cooperative">Cooperative Bank of Oromia</option>
-                        <option value="Nib">Nib International Bank</option>
-                    </select>
-                </div>
-                <div class="form-group"><label class="form-label">Account Number</label><input type="text" class="form-input" id="accountNumber" placeholder="Enter your bank account number" required></div>
-                <div class="form-group"><label class="form-label">Account Holder Name</label><input type="text" class="form-input" id="accountHolderName" placeholder="Name on bank account" required></div>
-                <button type="submit" class="btn btn-primary btn-block">➕ Add Account</button>
+                <div class="form-group"><label class="form-label">Bank Name</label><select class="form-select" id="bankName"><option value="CBE">CBE</option><option value="Awash">Awash</option><option value="Dashen">Dashen</option><option value="Abyssinia">Abyssinia</option><option value="Wegagen">Wegagen</option></select></div>
+                <div class="form-group"><label class="form-label">Account Number</label><input type="text" class="form-input" id="accountNumber" required></div>
+                <button type="submit" class="btn btn-primary btn-block">Add Account</button>
             </form>
         `);
         document.getElementById('addBankForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const bankName = document.getElementById('bankName').value;
-            const accountNumber = document.getElementById('accountNumber').value;
-            const accountHolderName = document.getElementById('accountHolderName').value;
-            try {
-                await API.post('/bank', { bankName, accountNumber, accountHolderName });
-                document.querySelector('.modal-overlay').remove();
-                Toast.show('Bank account added!');
-                ProfilePage.showBankAccounts();
-            } catch (error) { Toast.show(error.message, 'error'); }
+            try { await API.post('/bank', { bankName: document.getElementById('bankName').value, accountNumber: document.getElementById('accountNumber').value }); document.querySelector('.modal-overlay').remove(); ProfilePage.showBankAccounts(); }
+            catch (error) { Toast.show(error.message, 'error'); }
         });
         try {
             const data = await API.get('/bank');
-            document.getElementById('bankContent').innerHTML = data.data.length > 0 ? data.data.map(a => `
-                <div class="list-item">
-                    <div class="list-item-icon">🏦</div>
-                    <div class="list-item-content">
-                        <div class="list-item-title">${a.bank_name}</div>
-                        <div class="list-item-subtitle">${a.account_number}</div>
-                        ${a.account_holder_name ? `<div class="text-xs text-muted">${a.account_holder_name}</div>` : ''}
-                    </div>
-                    ${a.is_primary ? '<span class="badge badge-primary">Primary</span>' : ''}
-                </div>
-            `).join('') : '<p class="text-center text-secondary py-4">No bank accounts added yet</p>';
-        } catch (error) { document.getElementById('bankContent').innerHTML = '<p class="text-center text-secondary">Failed to load accounts</p>'; }
+            document.getElementById('bankContent').innerHTML = data.data.length > 0 ? data.data.map(a => `<div class="list-item"><div class="list-item-icon">🏦</div><div class="list-item-content"><div class="list-item-title">${a.bank_name}</div><div class="list-item-subtitle">${a.account_number}</div></div></div>`).join('') : '<p class="text-center text-secondary py-4">No accounts</p>';
+        } catch (error) { document.getElementById('bankContent').innerHTML = '<p class="text-center text-secondary">Failed to load</p>'; }
     }
 
-    static logout() { 
-        store.logout(); 
-        router.navigate('/login'); 
-    }
-    
+    static logout() { store.logout(); router.navigate('/login'); }
     unmount() {}
 }

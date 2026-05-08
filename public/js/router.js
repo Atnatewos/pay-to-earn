@@ -36,9 +36,7 @@ class Router {
             const hash = window.location.hash.slice(1) || '/';
             const [path] = hash.split('?');
             const isAdmin = path.startsWith('/admin');
-            
             if (path === '/login' || path === '/register' || path === '/admin/login' || path === '/' || path === '/home') return;
-            
             if (isAdmin) {
                 const mainEl = this.adminContainer?.querySelector('.admin-main');
                 if (mainEl && !mainEl.querySelector('.admin-breadcrumb')) {
@@ -57,9 +55,7 @@ class Router {
         const hash = window.location.hash.slice(1) || '/';
         const [path] = hash.split('?');
         const isAdmin = path.startsWith('/admin');
-        
         if (path === '/login' || path === '/register' || path === '/admin/login' || path === '/' || path === '/home') return;
-        
         if (isAdmin) {
             this.forceInjectAdminBreadcrumb(path);
             this.forceInjectAdminActions(path);
@@ -73,7 +69,6 @@ class Router {
 
         const rawHash = window.location.hash.slice(1) || '/';
         const [path, queryString] = rawHash.split('?');
-        
         const queryParams = {};
         if (queryString) {
             queryString.split('&').forEach(pair => {
@@ -81,7 +76,6 @@ class Router {
                 queryParams[key] = decodeURIComponent(val || '');
             });
         }
-        
         this.currentPath = path;
         this.currentQuery = queryParams;
 
@@ -94,8 +88,27 @@ class Router {
         const adminToken = localStorage.getItem('admin_token');
         const userToken = localStorage.getItem('token');
 
+        // DEFINE THESE BEFORE USING THEM
         document.getElementById('app').style.display = isAdminRoute ? 'none' : 'block';
         document.getElementById('adminApp').style.display = isAdminRoute ? 'flex' : 'none';
+
+        // Check suspended/banned users
+        if (userToken && !isAdminRoute) {
+            const userData = JSON.parse(localStorage.getItem('user') || '{}');
+            if (userData.status === 'suspended' || userData.status === 'banned') {
+                const allowedRoutes = ['/home', '/profile', '/support', '/login', '/register', '/'];
+                if (!allowedRoutes.includes(path)) {
+                    const msg = userData.status === 'banned' 
+                        ? 'Your account has been permanently banned.' 
+                        : 'Your account is suspended. Contact support for help.';
+                    setTimeout(() => {
+                        Dialog.alert(msg, userData.status === 'banned' ? 'Account Banned' : 'Account Suspended', 'warning');
+                    }, 300);
+                    window.location.hash = '#/home';
+                    return;
+                }
+            }
+        }
 
         if (isAdminRoute) {
             if (!adminToken && path !== '/admin/login') {
@@ -107,7 +120,7 @@ class Router {
                 return;
             }
         } else {
-            const publicRoutes = ['/', '/login', '/register'];
+            const publicRoutes = ['/', '/login', '/register', '/support'];
             if (!userToken && !publicRoutes.includes(path)) {
                 window.location.hash = '#/login';
                 return;
@@ -121,22 +134,17 @@ class Router {
         const page = this.routes[path];
         if (page) {
             this.navigating = true;
-            
             if (isAdminRoute && this.currentAdminPage?.unmount) {
                 this.currentAdminPage.unmount();
             }
             if (!isAdminRoute && this.currentPage?.unmount) {
                 this.currentPage.unmount();
             }
-
             const container = isAdminRoute ? this.adminContainer : this.userContainer;
             const pageInstance = new page(container);
-            
             if (isAdminRoute) this.currentAdminPage = pageInstance;
             else this.currentPage = pageInstance;
-
             pageInstance.render();
-            
             setTimeout(() => {
                 this.injectNow(path, isAdminRoute);
                 this.navigating = false;
@@ -156,27 +164,15 @@ class Router {
     forceInjectUserBreadcrumb(path) {
         const meta = this.routeMeta[path];
         if (!meta?.breadcrumbs || meta.breadcrumbs.length === 0) return;
-
         const existing = document.querySelector('.breadcrumb');
         if (existing) existing.remove();
-
         const nav = document.createElement('nav');
         nav.className = 'breadcrumb';
         nav.setAttribute('data-router', 'breadcrumb');
-        
         nav.innerHTML = meta.breadcrumbs.map((item, index) => {
             const isLast = index === meta.breadcrumbs.length - 1;
-            return `
-                <span class="breadcrumb-item ${isLast ? 'active' : ''}">
-                    ${!isLast 
-                        ? `<a onclick="router.navigate('${item.path || '#'}')" class="breadcrumb-link">${item.label}</a>`
-                        : `<span>${item.label}</span>`
-                    }
-                    ${!isLast ? '<span class="breadcrumb-separator">›</span>' : ''}
-                </span>
-            `;
+            return `<span class="breadcrumb-item ${isLast ? 'active' : ''}">${!isLast ? `<a onclick="router.navigate('${item.path || '#'}')" class="breadcrumb-link">${item.label}</a>` : `<span>${item.label}</span>`}${!isLast ? '<span class="breadcrumb-separator">›</span>' : ''}</span>`;
         }).join('');
-
         const pageEl = this.userContainer?.querySelector('.page');
         if (pageEl && !pageEl.querySelector('[data-router="breadcrumb"]')) {
             pageEl.insertBefore(nav, pageEl.firstChild);
@@ -186,27 +182,15 @@ class Router {
     forceInjectAdminBreadcrumb(path) {
         const meta = this.routeMeta[path];
         if (!meta?.breadcrumbs || meta.breadcrumbs.length === 0) return;
-
         const existing = document.querySelector('.admin-breadcrumb');
         if (existing) existing.remove();
-
         const nav = document.createElement('nav');
         nav.className = 'admin-breadcrumb';
         nav.setAttribute('data-router', 'breadcrumb');
-        
         nav.innerHTML = meta.breadcrumbs.map((item, index) => {
             const isLast = index === meta.breadcrumbs.length - 1;
-            return `
-                <span class="breadcrumb-item ${isLast ? 'active' : ''}">
-                    ${!isLast 
-                        ? `<a onclick="router.navigate('${item.path || '#'}')" class="breadcrumb-link">${item.label}</a>`
-                        : `<span>${item.label}</span>`
-                    }
-                    ${!isLast ? '<span class="breadcrumb-separator">›</span>' : ''}
-                </span>
-            `;
+            return `<span class="breadcrumb-item ${isLast ? 'active' : ''}">${!isLast ? `<a onclick="router.navigate('${item.path || '#'}')" class="breadcrumb-link">${item.label}</a>` : `<span>${item.label}</span>`}${!isLast ? '<span class="breadcrumb-separator">›</span>' : ''}</span>`;
         }).join('');
-
         const mainEl = this.adminContainer?.querySelector('.admin-main');
         if (mainEl && !mainEl.querySelector('[data-router="breadcrumb"]')) {
             mainEl.insertBefore(nav, mainEl.firstChild);
@@ -216,21 +200,12 @@ class Router {
     forceInjectAdminActions(path) {
         const meta = this.routeMeta[path];
         if (!meta?.actions || meta.actions.length === 0) return;
-
         const existing = document.querySelector('.admin-action-buttons');
         if (existing) existing.remove();
-
         const container = document.createElement('div');
         container.className = 'admin-action-buttons';
         container.setAttribute('data-router', 'actions');
-        
-        container.innerHTML = meta.actions.map(btn => `
-            <button class="btn btn-${btn.variant || 'primary'} ${btn.block ? 'btn-block' : ''}"
-                    onclick="${btn.onclick}">
-                ${btn.icon || ''} ${btn.label}
-            </button>
-        `).join('');
-
+        container.innerHTML = meta.actions.map(btn => `<button class="btn btn-${btn.variant || 'primary'} ${btn.block ? 'btn-block' : ''}" onclick="${btn.onclick}">${btn.icon || ''} ${btn.label}</button>`).join('');
         const mainEl = this.adminContainer?.querySelector('.admin-main');
         if (mainEl && !mainEl.querySelector('[data-router="actions"]')) {
             mainEl.appendChild(container);

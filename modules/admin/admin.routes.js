@@ -48,4 +48,7 @@ router.get('/withdrawals', authenticateAdmin, AdminController.getWithdrawals);
 // Salary history
 router.get('/salary/history', authenticateAdmin, AdminController.getSalaryHistory);
 
+router.post('/users/:id/level', authenticateAdmin, AdminController.changeUserLevel);
+router.post('/users/:id/add-money', authenticateAdmin, AdminController.addUserMoney);
+
 module.exports = router;

@@ -222,6 +222,82 @@ class AdminService {
 
         return result.rows;
     }
+
+        // Level up/down user
+    async changeUserLevel(req, res) {
+        try {
+            const { packageName } = req.body;
+            const userId = req.params.id;
+            
+            const user = await pool.query('SELECT phone, full_name FROM users WHERE id = $1', [userId]);
+            if (user.rows.length === 0) return res.json({ success: false, message: 'User not found' });
+            
+            if (packageName === 'none') {
+                // Remove package
+                await pool.query('UPDATE users SET active_package = NULL, package_expiry = NULL WHERE id = $1', [userId]);
+                await pool.query('UPDATE user_packages SET is_active = FALSE WHERE user_id = $1', [userId]);
+                
+                await pool.query(
+                    'INSERT INTO user_alerts (user_id, title, message, type, icon, color, sent_by) VALUES ($1,$2,$3,$4,$5,$6,$7)',
+                    [userId, '📦 Package Removed', 'Your active package has been removed by admin.', 'info', '📦', 'color-info', req.admin.id]
+                );
+            } else {
+                // Activate package
+                const pkg = await pool.query('SELECT * FROM packages WHERE name = $1', [packageName]);
+                if (pkg.rows.length === 0) return res.json({ success: false, message: 'Invalid package' });
+                
+                await pool.query('UPDATE user_packages SET is_active = FALSE WHERE user_id = $1', [userId]);
+                await pool.query(
+                    'INSERT INTO user_packages (user_id, package_name, deposit_amount, started_at, expires_at) VALUES ($1,$2,$3,CURRENT_DATE,CURRENT_DATE + INTERVAL \'30 days\')',
+                    [userId, packageName, pkg.rows[0].deposit_amount]
+                );
+                await pool.query('UPDATE users SET active_package = $1, package_expiry = CURRENT_DATE + INTERVAL \'30 days\' WHERE id = $2', [packageName, userId]);
+                
+                await pool.query(
+                    'INSERT INTO user_alerts (user_id, title, message, type, icon, color, sent_by) VALUES ($1,$2,$3,$4,$5,$6,$7)',
+                    [userId, '🎉 Level Up!', `Your package has been upgraded to ${packageName}! Enjoy higher earnings.`, 'success', '🎊', 'gradient-accent', req.admin.id]
+                );
+                await NotificationsService.create(userId, 'Package Changed', `Your package is now ${packageName}`, 'system');
+            }
+            
+            await this.logActivity(userId, user.rows[0].phone, 'level_change', 'package', '', packageName, req.admin.id, req.ip);
+            return res.json({ success: true, message: 'User package updated' });
+        } catch (error) {
+            return res.json({ success: false, message: 'Failed to update package' });
+        }
+    }
+
+// Add money to user
+async addUserMoney(req, res) {
+    try {
+        const { amount, reason } = req.body;
+        const userId = req.params.id;
+        
+        if (!amount || amount <= 0) return res.json({ success: false, message: 'Invalid amount' });
+        
+        const user = await pool.query('SELECT phone, full_name FROM users WHERE id = $1', [userId]);
+        if (user.rows.length === 0) return res.json({ success: false, message: 'User not found' });
+        
+        await pool.query('UPDATE users SET balance = balance + $1, earnings_balance = earnings_balance + $1 WHERE id = $2', [amount, userId]);
+        
+        const updated = await pool.query('SELECT balance FROM users WHERE id = $1', [userId]);
+        await pool.query(
+            'INSERT INTO transactions (user_id, type, amount, balance_after, category, description) VALUES ($1,$2,$3,$4,$5,$6)',
+            [userId, 'credit', amount, updated.rows[0].balance, 'admin_gift', reason || 'Admin gift']
+        );
+        
+        await pool.query(
+            'INSERT INTO user_alerts (user_id, title, message, type, icon, color, sent_by) VALUES ($1,$2,$3,$4,$5,$6,$7)',
+            [userId, '🎁 Gift Received!', `Admin has added ${amount.toLocaleString()} ETB to your account. Reason: ${reason || 'Bonus'}`, 'success', '🎁', 'gradient-primary', req.admin.id]
+        );
+        await NotificationsService.create(userId, 'Gift Received 🎁', `${amount.toLocaleString()} ETB added to your account`, 'system');
+        
+        await this.logActivity(userId, user.rows[0].phone, 'money_added', 'balance', '', amount.toString(), req.admin.id, req.ip);
+        return res.json({ success: true, message: `${amount} ETB added to user` });
+    } catch (error) {
+        return res.json({ success: false, message: 'Failed to add money' });
+    }
+}
 }
 
 module.exports = new AdminService();

@@ -77,6 +77,11 @@ document.addEventListener('DOMContentLoaded', () => {
         ]
     });
 
+            // support route
+        router.addRoute('/support', SupportPage, {
+        breadcrumbs: [{ label: 'Home', path: '/home' }, { label: 'Support' }]
+    });
+
     // FUTURE: Add more user routes here
     // router.addRoute('/support', SupportPage, {
     //     breadcrumbs: [
