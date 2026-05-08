@@ -27,4 +27,16 @@ router.post('/:id/dismiss', authenticateUser, async (req, res) => {
     }
 });
 
+router.get('/sticky', authenticateUser, async (req, res) => {
+    try {
+        const result = await pool.query(
+            'SELECT * FROM user_alerts WHERE user_id = $1 AND is_dismissed = FALSE AND type IN ($2, $3, $4) ORDER BY created_at DESC LIMIT 3',
+            [req.user.id, 'warning', 'danger', 'announcement']
+        );
+        return res.json({ success: true, data: result.rows });
+    } catch (error) {
+        return res.json({ success: false, data: [] });
+    }
+});
+
 module.exports = router;

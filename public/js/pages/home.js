@@ -19,6 +19,7 @@ class HomePage {
 
         this.container.innerHTML = `
             <div class="page">
+                <div id="stickyAlerts"></div>
                 <div id="homeContent">
                     <div class="balance-hero">
                         <div class="skeleton" style="height:24px;width:100px;background:rgba(255,255,255,0.2);margin-bottom:8px;"></div>
@@ -38,7 +39,58 @@ class HomePage {
 
         router.reinjectNavigation();
         await this.loadData();
+        await this.loadStickyAlerts();
         setTimeout(() => HomePage.calculateDaysRemaining(), 200);
+    }
+
+    async loadStickyAlerts() {
+        try {
+            const token = localStorage.getItem('token');
+            const apiUrl = APP_CONFIG.apiUrl;
+            const response = await fetch(`${apiUrl}/alerts/sticky`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const result = await response.json();
+            
+            if (result.success && result.data && result.data.length > 0) {
+                const alertsContainer = document.getElementById('stickyAlerts');
+                if (!alertsContainer) return;
+                
+                result.data.forEach(alert => {
+                    const alertEl = document.createElement('div');
+                    const bgColor = alert.color === 'color-danger' ? 'var(--color-danger-bg)' 
+                        : alert.color === 'color-warning' ? 'var(--color-warning-bg)' 
+                        : 'var(--color-info-bg)';
+                    const borderColor = alert.color === 'color-danger' ? 'var(--color-danger)' 
+                        : alert.color === 'color-warning' ? 'var(--color-warning)' 
+                        : 'var(--color-info)';
+                    
+                    alertEl.style.cssText = `
+                        background: ${bgColor};
+                        border-left: 4px solid ${borderColor};
+                        padding: 12px 16px;
+                        display: flex;
+                        align-items: center;
+                        gap: 12px;
+                        margin-bottom: 8px;
+                        border-radius: var(--radius-lg);
+                        font-size: var(--font-sm);
+                    `;
+                    alertEl.innerHTML = `
+                        <span style="font-size:24px;">${alert.icon}</span>
+                        <div style="flex:1;">
+                            <strong>${alert.title}</strong>
+                            <div style="color:var(--color-text-secondary);">${alert.message}</div>
+                        </div>
+                        <button onclick="this.parentElement.remove(); fetch('${apiUrl}/alerts/${alert.id}/dismiss', {method:'POST', headers:{'Authorization':'Bearer ${token}'}});" 
+                                style="font-size:20px;cursor:pointer;opacity:0.5;padding:4px 8px;">×</button>
+                    `;
+                    alertsContainer.appendChild(alertEl);
+                });
+            }
+        } catch (error) {
+            // silently fail
+        }
     }
 
     async loadData() {
@@ -54,7 +106,6 @@ class HomePage {
             const todayTask = task.data;
 
             document.getElementById('homeContent').innerHTML = `
-                <!-- Balance Hero Card -->
                 <div class="balance-hero animate-fadeInUp">
                     <div class="balance-hero-label">Total Balance</div>
                     <div class="balance-hero-amount">${this.formatETB(user.balance)} ETB</div>
@@ -83,16 +134,11 @@ class HomePage {
                         </div>
                     `}
                     <div class="balance-hero-actions">
-                        <button class="btn btn-white btn-sm" onclick="router.navigate('/deposit')">
-                            💳 Deposit
-                        </button>
-                        <button class="btn btn-outline-white btn-sm" onclick="router.navigate('/withdraw')">
-                            💸 Withdraw
-                        </button>
+                        <button class="btn btn-white btn-sm" onclick="router.navigate('/deposit')">💳 Deposit</button>
+                        <button class="btn btn-outline-white btn-sm" onclick="router.navigate('/withdraw')">💸 Withdraw</button>
                     </div>
                 </div>
 
-                <!-- Stats Row -->
                 <div class="stats-row">
                     <div class="stat-card-home animate-fadeInUp stagger-1" onclick="router.navigate('/tasks')">
                         <div class="stat-card-icon tasks">✅</div>
@@ -108,7 +154,6 @@ class HomePage {
                     </div>
                 </div>
 
-                <!-- Quick Actions Grid -->
                 <div class="quick-actions-grid animate-fadeInUp stagger-3">
                     <div class="quick-action-item" onclick="router.navigate('/tasks')">
                         <div class="quick-action-icon tasks">✅</div>
@@ -126,14 +171,8 @@ class HomePage {
                         <div class="quick-action-icon" style="background: #FFF8E1;">🏆</div>
                         <span class="quick-action-label">Ranks</span>
                     </div>
-                    <!-- FUTURE: Add more quick actions here -->
-                    <!-- <div class="quick-action-item" onclick="router.navigate('/giftcode')">
-                        <div class="quick-action-icon" style="background: #FFF0F6;">🎁</div>
-                        <span class="quick-action-label">Gifts</span>
-                    </div> -->
                 </div>
 
-                <!-- Earnings Summary -->
                 <div class="summary-card animate-fadeInUp stagger-4">
                     <div class="summary-card-header">📊 Earnings Summary</div>
                     <div class="summary-card-body">
@@ -153,15 +192,9 @@ class HomePage {
                             <span class="summary-label">Total Earned</span>
                             <span class="summary-value highlight">${this.formatETB(earn.totalEarned)} ETB</span>
                         </div>
-                        <!-- FUTURE: Add more earning stats -->
-                        <!-- <div class="summary-row">
-                            <span class="summary-label">Manager Salary</span>
-                            <span class="summary-value highlight">0 ETB</span>
-                        </div> -->
                     </div>
                 </div>
 
-                <!-- Commissions Summary -->
                 <div class="summary-card animate-fadeInUp stagger-5">
                     <div class="summary-card-header">💎 Commissions</div>
                     <div class="summary-card-body">
@@ -179,22 +212,6 @@ class HomePage {
                         </div>
                     </div>
                 </div>
-
-                <!-- FUTURE: Recent Activity Feed -->
-                <!-- <div class="summary-card animate-fadeInUp stagger-6">
-                    <div class="summary-card-header">🔄 Recent Activity</div>
-                    <div class="summary-card-body" id="recentActivity">
-                        <p class="text-center text-secondary py-3">Loading...</p>
-                    </div>
-                </div> -->
-
-                <!-- FUTURE: Announcements Section -->
-                <!-- <div class="card mt-4">
-                    <h4 class="mb-3">📢 Announcements</h4>
-                    <div id="announcements">
-                        <p class="text-center text-secondary py-3">No announcements</p>
-                    </div>
-                </div> -->
             `;
         } catch (error) {
             document.getElementById('homeContent').innerHTML = `
@@ -247,20 +264,7 @@ class HomePage {
         }
     }
 
-    // FUTURE: Load recent activity
-    // static async loadRecentActivity() {
-    //     const data = await API.get('/transactions?limit=5');
-    //     // Render recent transactions
-    // }
-
-    // FUTURE: Load announcements
-    // static async loadAnnouncements() {
-    //     const data = await API.get('/broadcasts');
-    //     // Render announcements
-    // }
-
     formatETB(amount) {
-        // Safety check: if amount is unreasonably large, show 0
         const num = Number(amount || 0);
         if (!isFinite(num) || num > 999999999 || num < 0) {
             return '0.00';

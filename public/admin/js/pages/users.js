@@ -268,169 +268,227 @@ class AdminUsers {
         }
     }
 
-    // static async viewUser(userId) {
-    //     const token = localStorage.getItem('admin_token');
-    //     const apiUrl = APP_CONFIG.apiUrl;
-    //     try {
-    //         const response = await fetch(`${apiUrl}/admin/users/${userId}`, {
-    //             headers: { 'Authorization': `Bearer ${token}` }
-    //         });
-    //         const result = await response.json();
-    //         const u = result.data;
-
-    //         const overlay = document.createElement('div');
-    //         overlay.className = 'modal-overlay';
-    //         overlay.innerHTML = `
-    //             <div class="modal animate-slideUp" style="max-width:500px">
-    //                 <div class="modal-header">
-    //                     <h3 class="modal-title">${u.full_name||u.phone}</h3>
-    //                     <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">×</button>
-    //                 </div>
-    //                 <div class="text-center mb-4">
-    //                     <div class="profile-avatar" style="margin:0 auto">${u.avatar_url||'👤'}</div>
-    //                     <p class="text-sm text-secondary mt-2">${u.phone}</p>
-    //                     <span class="badge ${u.status==='active'?'badge-success':'badge-danger'}">${u.status}</span>
-    //                     ${u.active_package?`<span class="badge badge-primary ml-1">${u.active_package}</span>`:''}
-    //                 </div>
-    //                 <div class="bank-info-card mb-3">
-    //                     <div class="bank-info-row"><span class="bank-info-label">User ID</span><span class="bank-info-value">#${u.id}</span></div>
-    //                     <div class="bank-info-row"><span class="bank-info-label">Balance</span><span class="bank-info-value font-bold">${Number(u.balance).toLocaleString()} ETB</span></div>
-    //                     <div class="bank-info-row"><span class="bank-info-label">Total Earned</span><span class="bank-info-value">${Number(u.total_earned).toLocaleString()} ETB</span></div>
-    //                     <div class="bank-info-row"><span class="bank-info-label">Total Deposited</span><span class="bank-info-value">${Number(u.total_deposited).toLocaleString()} ETB</span></div>
-    //                     <div class="bank-info-row"><span class="bank-info-label">Referral Code</span><span class="bank-info-value">${u.referral_code}</span></div>
-    //                     <div class="bank-info-row"><span class="bank-info-label">Joined</span><span class="bank-info-value">${new Date(u.created_at).toLocaleDateString()}</span></div>
-    //                 </div>
-    //                 <div class="flex gap-2 mb-3">
-    //                     <button class="btn btn-outline btn-sm btn-block" onclick="AdminUsers.editUser(${u.id},'${u.phone}','${u.full_name||''}')">✏️ Edit</button>
-    //                     <button class="btn btn-outline btn-sm btn-block" onclick="AdminUsers.notifyUser(${u.id})">📢 Notify</button>
-    //                 </div>
-    //                 <div class="flex gap-2">
-    //                     ${u.status==='active' ? `
-    //                         <button class="btn btn-warning btn-block" onclick="AdminUsers.suspendUser(${u.id})">⏸️ Suspend</button>
-    //                         <button class="btn btn-danger btn-block" onclick="AdminUsers.banUser(${u.id})">🚫 Ban</button>
-    //                     ` : `<button class="btn btn-success btn-block" onclick="AdminUsers.activateUser(${u.id})">✅ Activate</button>`}
-    //                 </div>
-    //             </div>
-    //         `;
-    //         overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
-    //         document.body.appendChild(overlay);
-    //     } catch (error) {
-    //         await Dialog.alert('Failed to load user details', 'Error', 'error');
-    //     }
-    // }
-
-    // static async editUser(id, phone, name) {
-    //     const newName = await Dialog.prompt('Edit Full Name', 'Enter full name', name);
-    //     if (newName === null) return;
+    // public/admin/js/pages/users.js - Replace viewUser method
+    static async viewUser(userId) {
+        const token = localStorage.getItem('admin_token');
+        const apiUrl = APP_CONFIG.apiUrl;
         
-    //     const newPhone = await Dialog.prompt('Edit Phone Number', 'Enter phone number', phone);
-    //     if (newPhone === null) return;
+        try {
+            const response = await fetch(`${apiUrl}/admin/users/${userId}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const result = await response.json();
+            const u = result.data;
 
-    //     const confirmed = await Dialog.confirm(
-    //         'Save these changes?',
-    //         'Update User',
-    //         '💾 Save',
-    //         'Cancel'
-    //     );
-    //     if (!confirmed) return;
+            const overlay = document.createElement('div');
+            overlay.className = 'modal-overlay';
+            overlay.innerHTML = `
+                <div class="modal animate-slideUp" style="max-width:600px; max-height:90vh;">
+                    <div class="modal-header">
+                        <h3 class="modal-title">${u.full_name||u.phone}</h3>
+                        <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">×</button>
+                    </div>
+                    
+                    <!-- User Summary Card -->
+                    <div class="card card-gradient text-center mb-3">
+                        <div class="profile-avatar" style="margin:0 auto">${u.avatar_url||'👤'}</div>
+                        <h4 class="mt-2">${u.full_name||'N/A'}</h4>
+                        <p class="text-sm text-secondary">${u.phone} | #${u.id}</p>
+                        <div class="mt-2">
+                            <span class="badge ${u.status==='active'?'badge-success':u.status==='suspended'?'badge-warning':'badge-danger'}">${u.status}</span>
+                            ${u.active_package?`<span class="badge badge-primary ml-1">${u.active_package}</span>`:''}
+                            ${u.warningCount > 0 ? `<span class="badge badge-warning ml-1">⚠️ ${u.warningCount} warnings</span>` : ''}
+                        </div>
+                    </div>
 
-    //     const token = localStorage.getItem('admin_token');
-    //     const apiUrl = APP_CONFIG.apiUrl;
-    //     try {
-    //         await fetch(`${apiUrl}/admin/users/${id}`, {
-    //             method: 'PUT',
-    //             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-    //             body: JSON.stringify({ fullName: newName, phone: newPhone })
-    //         });
-    //         await Dialog.alert('User updated successfully!', 'Updated', 'success');
-    //         document.querySelector('.modal-overlay')?.remove();
-    //         router.navigate('/admin/users');
-    //     } catch (error) {
-    //         await Dialog.alert('Failed to update user', 'Error', 'error');
-    //     }
-    // }
+                    <!-- Tabs -->
+                    <div class="filter-tabs mb-3" style="position:sticky;top:0;z-index:10;background:white;">
+                        <button class="filter-tab active" onclick="this.parentElement.querySelectorAll('.filter-tab').forEach(b=>b.classList.remove('active'));this.classList.add('active');document.getElementById('tabInfo').style.display='block';document.getElementById('tabHistory').style.display='none';document.getElementById('tabFinance').style.display='none';">📋 Info</button>
+                        <button class="filter-tab" onclick="this.parentElement.querySelectorAll('.filter-tab').forEach(b=>b.classList.remove('active'));this.classList.add('active');document.getElementById('tabInfo').style.display='none';document.getElementById('tabHistory').style.display='block';document.getElementById('tabFinance').style.display='none';">📜 History</button>
+                        <button class="filter-tab" onclick="this.parentElement.querySelectorAll('.filter-tab').forEach(b=>b.classList.remove('active'));this.classList.add('active');document.getElementById('tabInfo').style.display='none';document.getElementById('tabHistory').style.display='none';document.getElementById('tabFinance').style.display='block';">💰 Finance</button>
+                    </div>
 
-    // static async notifyUser(id) {
-    //     const title = await Dialog.prompt('Notification Title', 'Enter notification title...');
-    //     if (!title) return;
-        
-    //     const message = await Dialog.prompt('Notification Message', 'Enter message for the user...');
-    //     if (!message) return;
+                    <!-- Info Tab -->
+                    <div id="tabInfo">
+                        <div class="bank-info-card mb-3">
+                            <div class="bank-info-row"><span class="bank-info-label">User ID</span><span class="bank-info-value">#${u.id}</span></div>
+                            <div class="bank-info-row"><span class="bank-info-label">Phone</span><span class="bank-info-value">${u.phone}</span></div>
+                            <div class="bank-info-row"><span class="bank-info-label">Name</span><span class="bank-info-value">${u.full_name||'N/A'}</span></div>
+                            <div class="bank-info-row"><span class="bank-info-label">Balance</span><span class="bank-info-value font-bold">${Number(u.balance||0).toLocaleString()} ETB</span></div>
+                            <div class="bank-info-row"><span class="bank-info-label">Total Earned</span><span class="bank-info-value">${Number(u.total_earned||0).toLocaleString()} ETB</span></div>
+                            <div class="bank-info-row"><span class="bank-info-label">Total Deposited</span><span class="bank-info-value">${Number(u.total_deposited||0).toLocaleString()} ETB</span></div>
+                            <div class="bank-info-row"><span class="bank-info-label">Referral Code</span><span class="bank-info-value">${u.referral_code}</span></div>
+                            <div class="bank-info-row"><span class="bank-info-label">Warnings</span><span class="bank-info-value">${u.warningCount || 0}</span></div>
+                            <div class="bank-info-row"><span class="bank-info-label">Joined</span><span class="bank-info-value">${new Date(u.created_at).toLocaleDateString()}</span></div>
+                        </div>
 
-    //     const token = localStorage.getItem('admin_token');
-    //     const apiUrl = APP_CONFIG.apiUrl;
-    //     try {
-    //         await fetch(`${apiUrl}/admin/users/${id}/notify`, {
-    //             method: 'POST',
-    //             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-    //             body: JSON.stringify({ title, message })
-    //         });
-    //         await Dialog.alert('Notification sent to user!', 'Sent', 'success');
-    //     } catch (error) {
-    //         await Dialog.alert('Failed to send notification', 'Error', 'error');
-    //     }
-    // }
+                        <div class="flex gap-2 mb-3">
+                            <button class="btn btn-outline btn-sm btn-block" onclick="AdminUsers.editUserModal(${u.id},'${u.phone}','${u.full_name||''}')">✏️ Edit</button>
+                            <button class="btn btn-outline btn-sm btn-block" onclick="AdminUsers.notifyUserModal(${u.id})">📢 Notify</button>
+                            <button class="btn btn-outline btn-sm btn-block" onclick="AdminUsers.alertUserModal(${u.id})">🔔 Alert</button>
+                            <button class="btn btn-outline btn-sm btn-block" onclick="AdminUsers.warnUserModal(${u.id})">⚠️ Warn</button>
+                        </div>
 
-    // static async suspendUser(id) {
-    //     const confirmed = await Dialog.confirm(
-    //         'Suspend this user? They will not be able to access their account.',
-    //         'Suspend User',
-    //         '⏸️ Suspend',
-    //         'Cancel',
-    //         'warning'
-    //     );
-    //     if (!confirmed) return;
+                        <div class="flex gap-2">
+                            ${u.status==='active' ? `
+                                <button class="btn btn-warning btn-block" onclick="AdminUsers.suspendUserModal(${u.id},'suspend')">⏸️ Suspend</button>
+                                <button class="btn btn-danger btn-block" onclick="AdminUsers.suspendUserModal(${u.id},'ban')">🚫 Ban</button>
+                            ` : `<button class="btn btn-success btn-block" onclick="AdminUsers.activateUserModal(${u.id})">✅ Activate</button>`}
+                        </div>
+                    </div>
 
-    //     const token = localStorage.getItem('admin_token');
-    //     const apiUrl = APP_CONFIG.apiUrl;
-    //     await fetch(`${apiUrl}/admin/users/${id}/suspend`, {
-    //         method: 'POST',
-    //         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-    //         body: JSON.stringify({ action: 'suspend', reason: 'Admin action' })
-    //     });
-    //     document.querySelector('.modal-overlay')?.remove();
-    //     router.navigate('/admin/users');
-    // }
+                    <!-- History Tab -->
+                    <div id="tabHistory" style="display:none;">
+                        <h5 class="mb-2">📜 Activity & Suspension History</h5>
+                        ${u.suspensionHistory && u.suspensionHistory.length > 0 ? u.suspensionHistory.map(h => `
+                            <div class="list-item" style="border-left:3px solid ${h.action==='ban'?'var(--color-danger)':h.action==='warning'?'var(--color-warning)':'var(--color-info)'}">
+                                <div class="list-item-icon">${h.action==='ban'?'🚫':h.action==='warning'?'⚡':'⏸️'}</div>
+                                <div class="list-item-content">
+                                    <div class="list-item-title">${h.action.toUpperCase()}</div>
+                                    <div class="list-item-subtitle">${h.reason||'No reason'} | By: ${h.admin_name||'System'} | ${new Date(h.created_at).toLocaleString()}</div>
+                                </div>
+                            </div>
+                        `).join('') : '<p class="text-center text-secondary py-3">No history</p>'}
 
-    // static async banUser(id) {
-    //     const confirmed = await Dialog.confirm(
-    //         'Ban this user permanently? This action cannot be easily undone.',
-    //         'Ban User',
-    //         '🚫 Ban Permanently',
-    //         'Cancel',
-    //         'danger'
-    //     );
-    //     if (!confirmed) return;
+                        <h5 class="mb-2 mt-4">🔧 Activity Log</h5>
+                        ${u.activityLog && u.activityLog.length > 0 ? u.activityLog.map(log => `
+                            <div class="list-item">
+                                <div class="list-item-icon">📝</div>
+                                <div class="list-item-content">
+                                    <div class="list-item-title">${log.action.replace(/_/g,' ')}</div>
+                                    <div class="list-item-subtitle">${log.field_name}: ${log.old_value||'N/A'} → ${log.new_value||'N/A'} | ${new Date(log.created_at).toLocaleString()}</div>
+                                </div>
+                            </div>
+                        `).join('') : '<p class="text-center text-secondary py-3">No activity</p>'}
+                    </div>
 
-    //     const token = localStorage.getItem('admin_token');
-    //     const apiUrl = APP_CONFIG.apiUrl;
-    //     await fetch(`${apiUrl}/admin/users/${id}/suspend`, {
-    //         method: 'POST',
-    //         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-    //         body: JSON.stringify({ action: 'ban', reason: 'Admin action' })
-    //     });
-    //     document.querySelector('.modal-overlay')?.remove();
-    //     router.navigate('/admin/users');
-    // }
+                    <!-- Finance Tab -->
+                    <div id="tabFinance" style="display:none;">
+                        <h5 class="mb-2">💳 Recent Deposits</h5>
+                        ${u.recentDeposits && u.recentDeposits.length > 0 ? u.recentDeposits.map(d => `
+                            <div class="list-item">
+                                <div class="list-item-icon">💳</div>
+                                <div class="list-item-content">
+                                    <div class="list-item-title">${Number(d.amount).toLocaleString()} ETB</div>
+                                    <div class="list-item-subtitle">${d.bank_name} | ${new Date(d.created_at).toLocaleString()}</div>
+                                </div>
+                                <span class="badge ${d.status==='verified'?'badge-success':d.status==='rejected'?'badge-danger':'badge-warning'}">${d.status}</span>
+                            </div>
+                        `).join('') : '<p class="text-center text-secondary py-3">No deposits</p>'}
 
-    // static async activateUser(id) {
-    //     const confirmed = await Dialog.confirm(
-    //         'Activate this user? They will regain full access to the platform.',
-    //         'Activate User',
-    //         '✅ Activate',
-    //         'Cancel'
-    //     );
-    //     if (!confirmed) return;
+                        <h5 class="mb-2 mt-4">💸 Recent Withdrawals</h5>
+                        ${u.recentWithdrawals && u.recentWithdrawals.length > 0 ? u.recentWithdrawals.map(w => `
+                            <div class="list-item">
+                                <div class="list-item-icon">💸</div>
+                                <div class="list-item-content">
+                                    <div class="list-item-title">${Number(w.amount).toLocaleString()} ETB</div>
+                                    <div class="list-item-subtitle">${new Date(w.created_at).toLocaleString()}</div>
+                                </div>
+                                <span class="badge ${w.status==='completed'?'badge-success':w.status==='rejected'?'badge-danger':'badge-warning'}">${w.status}</span>
+                            </div>
+                        `).join('') : '<p class="text-center text-secondary py-3">No withdrawals</p>'}
+                    </div>
+                </div>
+            `;
+            
+            overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+            document.body.appendChild(overlay);
+        } catch (error) {
+            await Dialog.alert('Failed to load user details', 'Error', 'error');
+        }
+    }
 
-    //     const token = localStorage.getItem('admin_token');
-    //     const apiUrl = APP_CONFIG.apiUrl;
-    //     await fetch(`${apiUrl}/admin/users/${id}/activate`, {
-    //         method: 'POST',
-    //         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }
-    //     });
-    //     document.querySelector('.modal-overlay')?.remove();
-    //     router.navigate('/admin/users');
-    // }
+// Add these helper methods to the AdminUsers class:
+static async editUserModal(id, phone, name) {
+    const newName = await Dialog.prompt('Edit Full Name', 'Enter full name', name);
+    if (newName === null) return;
+    const newPhone = await Dialog.prompt('Edit Phone Number', 'Enter phone number', phone);
+    if (newPhone === null) return;
+    const confirmed = await Dialog.confirm('Save changes?', 'Update User', '💾 Save', 'Cancel');
+    if (!confirmed) return;
+    const token = localStorage.getItem('admin_token');
+    const apiUrl = APP_CONFIG.apiUrl;
+    await fetch(`${apiUrl}/admin/users/${id}`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ fullName: newName, phone: newPhone })
+    });
+    document.querySelector('.modal-overlay')?.remove();
+    router.navigate('/admin/users');
+}
+
+static async notifyUserModal(id) {
+    const title = await Dialog.prompt('Notification Title', 'Enter title...');
+    if (!title) return;
+    const message = await Dialog.prompt('Notification Message', 'Enter message...');
+    if (!message) return;
+    const token = localStorage.getItem('admin_token');
+    const apiUrl = APP_CONFIG.apiUrl;
+    await fetch(`${apiUrl}/admin/users/${id}/notify`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ title, message })
+    });
+    await Dialog.alert('Notification sent!', 'Sent', 'success');
+}
+
+static async alertUserModal(id) {
+    const title = await Dialog.prompt('Alert Title', 'Enter alert title...');
+    if (!title) return;
+    const message = await Dialog.prompt('Alert Message', 'Enter alert message...');
+    if (!message) return;
+    const token = localStorage.getItem('admin_token');
+    const apiUrl = APP_CONFIG.apiUrl;
+    await fetch(`${apiUrl}/admin/users/${id}/alert`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ customTitle: title, customMessage: message })
+    });
+    await Dialog.alert('Alert sent!', 'Sent', 'success');
+}
+
+static async warnUserModal(id) {
+    const reason = await Dialog.prompt('Warning Reason', 'Enter reason for warning...');
+    if (!reason) return;
+    const confirmed = await Dialog.confirm('Send warning to this user? It will appear on their dashboard.', 'Confirm Warning', '⚠️ Send Warning', 'Cancel', 'warning');
+    if (!confirmed) return;
+    const token = localStorage.getItem('admin_token');
+    const apiUrl = APP_CONFIG.apiUrl;
+    await fetch(`${apiUrl}/admin/users/${id}/warn`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ reason })
+    });
+    await Dialog.alert('Warning sent! User will see it on their dashboard.', 'Warning Sent', 'warning');
+    document.querySelector('.modal-overlay')?.remove();
+    router.navigate('/admin/users');
+}
+
+static async suspendUserModal(id, action) {
+    const confirmed = await Dialog.confirm(
+        action === 'ban' ? 'Ban this user permanently?' : 'Suspend this user?',
+        action === 'ban' ? 'Ban User' : 'Suspend User',
+        action === 'ban' ? '🚫 Ban' : '⏸️ Suspend', 'Cancel',
+        action === 'ban' ? 'danger' : 'warning'
+    );
+    if (!confirmed) return;
+    const token = localStorage.getItem('admin_token');
+    const apiUrl = APP_CONFIG.apiUrl;
+    await fetch(`${apiUrl}/admin/users/${id}/suspend`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ action, reason: 'Admin action' })
+    });
+    document.querySelector('.modal-overlay')?.remove();
+    router.navigate('/admin/users');
+}
+
+static async activateUserModal(id) {
+    const confirmed = await Dialog.confirm('Activate this user?', 'Activate User', '✅ Activate', 'Cancel');
+    if (!confirmed) return;
+    const token = localStorage.getItem('admin_token');
+    const apiUrl = APP_CONFIG.apiUrl;
+    await fetch(`${apiUrl}/admin/users/${id}/activate`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }
+    });
+    document.querySelector('.modal-overlay')?.remove();
+    router.navigate('/admin/users');
+}
 
     unmount() {}
 }

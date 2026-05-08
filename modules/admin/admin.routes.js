@@ -18,6 +18,7 @@ router.get('/users/:id', authenticateAdmin, AdminController.getUserById);
 router.put('/users/:id', authenticateAdmin, AdminController.updateUser);
 router.delete('/users/:id', authenticateAdmin, AdminController.deleteUser);
 router.post('/users/:id/suspend', authenticateAdmin, AdminController.suspendUser);
+router.post('/users/:id/warn', authenticateAdmin, AdminController.warnUser);
 router.post('/users/:id/activate', authenticateAdmin, AdminController.activateUser);
 router.post('/users/:id/notify', authenticateAdmin, AdminController.notifyUser);
 

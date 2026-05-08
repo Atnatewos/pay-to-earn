@@ -1,17 +1,25 @@
 class NotificationBell {
+    // public/js/components/notificationBell.js - Update updateCount
     static async updateCount() {
         try {
-            const data = await API.get('/notifications/unread-count');
-            const count = data.data?.count || 0;
-            let badge = document.querySelector('.notification-badge');
-            if (badge) {
+            const token = localStorage.getItem('token');
+            const apiUrl = APP_CONFIG.apiUrl;
+            const response = await fetch(`${apiUrl}/notifications/unread-count`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const result = await response.json();
+            const count = result.data?.count || 0;
+            
+            // Update all notification badges
+            const badges = document.querySelectorAll('.notification-badge');
+            badges.forEach(badge => {
                 if (count > 0) {
                     badge.textContent = count > 99 ? '99+' : count;
                     badge.style.display = 'flex';
                 } else {
                     badge.style.display = 'none';
                 }
-            }
+            });
         } catch (e) {}
     }
 
