@@ -3,7 +3,6 @@ const pool = require('../../config/db');
 
 class TeamService {
     async getTeamOverview(userId) {
-        // Get Level A (Direct referrals - level 1)
         const levelAResult = await pool.query(
             `SELECT u.id, u.phone, u.full_name, u.active_package, u.created_at,
                     COALESCE(SUM(d.amount), 0) as total_recharge
@@ -15,7 +14,6 @@ class TeamService {
             [userId]
         );
 
-        // Get Level B (Indirect referrals - level 2)
         const levelBResult = await pool.query(
             `SELECT u.id, u.phone, u.full_name, u.active_package, u.created_at,
                     COALESCE(SUM(d.amount), 0) as total_recharge
@@ -27,7 +25,6 @@ class TeamService {
             [userId]
         );
 
-        // Get Level C (Extended referrals - level 3)
         const levelCResult = await pool.query(
             `SELECT u.id, u.phone, u.full_name, u.active_package, u.created_at,
                     COALESCE(SUM(d.amount), 0) as total_recharge
@@ -39,7 +36,6 @@ class TeamService {
             [userId]
         );
 
-        // Count active members (completed tasks in last 7 days)
         const sevenDaysAgo = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0];
 
         const activeResult = await pool.query(
@@ -50,7 +46,6 @@ class TeamService {
             [userId, sevenDaysAgo]
         );
 
-        // Get recharge summary by level
         const rechargeResult = await pool.query(
             `SELECT 
                 COALESCE(SUM(CASE WHEN ut.level = 1 THEN d.amount ELSE 0 END), 0) as level_a_recharge,
@@ -63,12 +58,7 @@ class TeamService {
             [userId]
         );
 
-        const recharge = rechargeResult.rows[0] || {
-            level_a_recharge: 0,
-            level_b_recharge: 0,
-            level_c_recharge: 0,
-            total_recharge: 0
-        };
+        const recharge = rechargeResult.rows[0] || { level_a_recharge: 0, level_b_recharge: 0, level_c_recharge: 0, total_recharge: 0 };
 
         return {
             totalTeam: levelAResult.rows.length + levelBResult.rows.length + levelCResult.rows.length,
@@ -88,7 +78,6 @@ class TeamService {
     async getTeamByLevel(userId, level, page = 1, limit = 20) {
         const offset = (page - 1) * limit;
 
-        // Get members at specific level with pagination
         const membersResult = await pool.query(
             `SELECT u.id, u.phone, u.full_name, u.active_package, u.created_at,
                     COALESCE(SUM(d.amount), 0) as total_recharge
@@ -102,7 +91,6 @@ class TeamService {
             [userId, level, limit, offset]
         );
 
-        // Get total count for pagination
         const countResult = await pool.query(
             'SELECT COUNT(*) as total FROM user_tree WHERE ancestor_id = $1 AND level = $2',
             [userId, level]
@@ -110,33 +98,16 @@ class TeamService {
 
         const total = parseInt(countResult.rows[0].total);
 
-        return {
-            members: membersResult.rows,
-            pagination: {
-                page,
-                limit,
-                total,
-                pages: Math.ceil(total / limit)
-            }
-        };
+        return { members: membersResult.rows, pagination: { page, limit, total, pages: Math.ceil(total / limit) } };
     }
 
     async getReferralLink(userId) {
-        // Get user's referral code
-        const result = await pool.query(
-            'SELECT referral_code FROM users WHERE id = $1',
-            [userId]
-        );
-
-        if (result.rows.length === 0) {
-            throw new Error('User not found');
-        }
-
+        const result = await pool.query('SELECT referral_code FROM users WHERE id = $1', [userId]);
+        if (result.rows.length === 0) throw new Error('User not found');
         const baseUrl = process.env.BASE_URL || 'https://pay-to-earn.vercel.app';
-
-        return {
-            code: result.rows[0].referral_code,
-            link: `${baseUrl}/#/register?ref=${result.rows[0].referral_code}`
+        return { 
+            code: result.rows[0].referral_code, 
+            link: `${baseUrl}/#/register?ref=${result.rows[0].referral_code}` 
         };
     }
 }

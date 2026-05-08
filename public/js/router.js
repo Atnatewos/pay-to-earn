@@ -6,6 +6,7 @@ class Router {
         this.currentPage = null;
         this.currentAdminPage = null;
         this.currentPath = '';
+        this.currentQuery = {};
         this.history = [];
         this.userContainer = document.getElementById('appContent');
         this.adminContainer = document.getElementById('adminContent');
@@ -31,54 +32,65 @@ class Router {
 
     startWatcher() {
         if (this.watcherInterval) clearInterval(this.watcherInterval);
-        
         this.watcherInterval = setInterval(() => {
             const hash = window.location.hash.slice(1) || '/';
-            const isAdmin = hash.startsWith('/admin');
+            const [path] = hash.split('?');
+            const isAdmin = path.startsWith('/admin');
             
-            if (hash === '/login' || hash === '/register' || hash === '/admin/login' || hash === '/' || hash === '/home') return;
+            if (path === '/login' || path === '/register' || path === '/admin/login' || path === '/' || path === '/home') return;
             
             if (isAdmin) {
                 const mainEl = this.adminContainer?.querySelector('.admin-main');
                 if (mainEl && !mainEl.querySelector('.admin-breadcrumb')) {
-                    this.forceInjectAdminBreadcrumb(hash);
+                    this.forceInjectAdminBreadcrumb(path);
                 }
             } else {
                 const pageEl = this.userContainer?.querySelector('.page');
                 if (pageEl && !pageEl.querySelector('.breadcrumb')) {
-                    this.forceInjectUserBreadcrumb(hash);
+                    this.forceInjectUserBreadcrumb(path);
                 }
             }
         }, 300);
     }
 
-    // Public method pages can call when they re-render themselves
     reinjectNavigation() {
         const hash = window.location.hash.slice(1) || '/';
-        const isAdmin = hash.startsWith('/admin');
+        const [path] = hash.split('?');
+        const isAdmin = path.startsWith('/admin');
         
-        if (hash === '/login' || hash === '/register' || hash === '/admin/login' || hash === '/' || hash === '/home') return;
+        if (path === '/login' || path === '/register' || path === '/admin/login' || path === '/' || path === '/home') return;
         
         if (isAdmin) {
-            this.forceInjectAdminBreadcrumb(hash);
-            this.forceInjectAdminActions(hash);
+            this.forceInjectAdminBreadcrumb(path);
+            this.forceInjectAdminActions(path);
         } else {
-            this.forceInjectUserBreadcrumb(hash);
+            this.forceInjectUserBreadcrumb(path);
         }
     }
 
     handleRoute() {
         if (this.navigating) return;
 
-        const hash = window.location.hash.slice(1) || '/';
+        const rawHash = window.location.hash.slice(1) || '/';
+        const [path, queryString] = rawHash.split('?');
         
-        if (this.history.length === 0 || this.history[this.history.length - 1] !== hash) {
-            this.history.push(hash);
+        const queryParams = {};
+        if (queryString) {
+            queryString.split('&').forEach(pair => {
+                const [key, val] = pair.split('=');
+                queryParams[key] = decodeURIComponent(val || '');
+            });
+        }
+        
+        this.currentPath = path;
+        this.currentQuery = queryParams;
+
+        if (this.history.length === 0 || this.history[this.history.length - 1] !== path) {
+            this.history.push(path);
         }
         if (this.history.length > 50) this.history = this.history.slice(-50);
 
-        this.currentPath = hash;
-        const isAdminRoute = hash.startsWith('/admin');
+        const isAdminRoute = path.startsWith('/admin');
         const adminToken = localStorage.getItem('admin_token');
         const userToken = localStorage.getItem('token');
 
@@ -86,27 +98,27 @@ class Router {
         document.getElementById('adminApp').style.display = isAdminRoute ? 'flex' : 'none';
 
         if (isAdminRoute) {
-            if (!adminToken && hash !== '/admin/login') {
+            if (!adminToken && path !== '/admin/login') {
                 window.location.hash = '#/admin/login';
                 return;
             }
-            if (adminToken && hash === '/admin/login') {
+            if (adminToken && path === '/admin/login') {
                 window.location.hash = '#/admin/dashboard';
                 return;
             }
         } else {
             const publicRoutes = ['/', '/login', '/register'];
-            if (!userToken && !publicRoutes.includes(hash)) {
+            if (!userToken && !publicRoutes.includes(path)) {
                 window.location.hash = '#/login';
                 return;
             }
-            if (userToken && (hash === '/login' || hash === '/register' || hash === '/')) {
+            if (userToken && (path === '/login' || path === '/register' || path === '/')) {
                 window.location.hash = '#/home';
                 return;
             }
         }
 
-        const page = this.routes[hash];
+        const page = this.routes[path];
         if (page) {
             this.navigating = true;
             
@@ -126,7 +138,7 @@ class Router {
             pageInstance.render();
             
             setTimeout(() => {
-                this.injectNow(hash, isAdminRoute);
+                this.injectNow(path, isAdminRoute);
                 this.navigating = false;
             }, 50);
         }
