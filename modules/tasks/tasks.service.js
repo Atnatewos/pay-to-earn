@@ -119,6 +119,13 @@ class TasksService {
     }
 
     async completeTask(userId) {
+
+        // CRITICAL: Cap income per task to prevent impossible values
+        const maxIncomePerTask = 1000; // Maximum is D8: 625 ETB
+        if (incomePerTask > maxIncomePerTask || incomePerTask <= 0) {
+            throw new Error('Invalid income per task value');
+        }
+        
         const client = await pool.connect();
 
         try {

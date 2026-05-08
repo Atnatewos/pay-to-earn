@@ -72,4 +72,11 @@ document.addEventListener('DOMContentLoaded', () => {
         ]
     });
 
+        router.addRoute('/admin/alerts', AdminAlerts, {
+        breadcrumbs: [
+            { label: 'Dashboard', path: '/admin/dashboard' },
+            { label: 'Alerts' }
+        ]
+    });
+
 });

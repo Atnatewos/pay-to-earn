@@ -42,6 +42,7 @@ const routes = {
     '/api/giftcodes': './modules/giftcodes/giftcodes.routes',
     '/api/salary': './modules/salary/salary.routes',
     '/api/leaderboard': './modules/leaderboard/leaderboard.routes',
+    '/api/alerts': './modules/alerts/alerts.routes',
 };
 
 for (const [routePath, routeFile] of Object.entries(routes)) {

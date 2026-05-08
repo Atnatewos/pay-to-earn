@@ -15,6 +15,8 @@ class AdminSidebar {
             { path: '/admin/features', icon: '⚙️', label: 'Features' },
             { path: '/admin/broadcast', icon: '📢', label: 'Broadcast' },
             { path: '/admin/logs', icon: '📝', label: 'Logs' },
+            { path: '/admin/alerts', icon: '🔔', label: 'Alerts' },
+            
         ];
 
         const sidebar = document.createElement('aside');

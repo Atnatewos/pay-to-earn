@@ -21,6 +21,12 @@ router.post('/users/:id/suspend', authenticateAdmin, AdminController.suspendUser
 router.post('/users/:id/activate', authenticateAdmin, AdminController.activateUser);
 router.post('/users/:id/notify', authenticateAdmin, AdminController.notifyUser);
 
+// Alert templates & sending
+router.get('/alerts/templates', authenticateAdmin, AdminController.getAlertTemplates);
+router.post('/users/:id/alert', authenticateAdmin, AdminController.sendUserAlert);
+router.post('/alerts/bulk', authenticateAdmin, AdminController.sendBulkAlert);
+router.post('/alerts/all', authenticateAdmin, AdminController.sendAllAlert);
+
 // Admins
 router.post('/admins', authenticateAdmin, AdminController.createAdmin);
 

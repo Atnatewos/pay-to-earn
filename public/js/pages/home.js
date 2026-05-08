@@ -260,7 +260,12 @@ class HomePage {
     // }
 
     formatETB(amount) {
-        return Number(amount || 0).toLocaleString('en-US', {
+        // Safety check: if amount is unreasonably large, show 0
+        const num = Number(amount || 0);
+        if (!isFinite(num) || num > 999999999 || num < 0) {
+            return '0.00';
+        }
+        return num.toLocaleString('en-US', {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2
         });

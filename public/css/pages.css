@@ -926,3 +926,71 @@
 .success-animation {
     animation: scaleUp 0.4s ease;
 }
+
+
+/* Add to public/css/pages.css */
+.alert-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+}
+
+.alert-modal {
+    background: var(--color-surface);
+    border-radius: var(--radius-3xl);
+    width: 100%;
+    max-width: 380px;
+    overflow: hidden;
+    box-shadow: var(--shadow-xl);
+}
+
+.alert-modal-header {
+    padding: 40px 24px 24px;
+    text-align: center;
+}
+
+.alert-modal-icon {
+    font-size: 64px;
+    animation: float 2s ease-in-out infinite;
+}
+
+.alert-modal-body {
+    padding: 24px;
+    text-align: center;
+}
+
+.alert-modal-title {
+    font-size: var(--font-xl);
+    font-weight: 700;
+    margin-bottom: 12px;
+}
+
+.alert-modal-message {
+    font-size: var(--font-sm);
+    color: var(--color-text-secondary);
+    line-height: 1.6;
+}
+
+.alert-modal-footer {
+    padding: 16px 24px 24px;
+}
+
+.template-card {
+    cursor: pointer;
+    transition: all var(--transition-bounce);
+}
+
+.template-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.template-card:active {
+    transform: scale(0.96);
+}
