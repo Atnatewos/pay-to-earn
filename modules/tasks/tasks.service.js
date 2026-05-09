@@ -255,10 +255,7 @@ class TasksService {
             const commissionAmount = taskEarning * rate;
 
             // Credit commission to upline user
-            await client.query(
-                'UPDATE users SET balance = balance + $1, total_earned = total_earned + $1 WHERE id = $2',
-                [commissionAmount, uplineUser.ancestor_id]
-            );
+            await client.query('UPDATE users SET balance = balance + $1, earnings_balance = earnings_balance + $1, total_earned = total_earned + $1 WHERE id = $2', [incomePerTask, userId]);
 
             // Record commission
             await client.query(

@@ -5,12 +5,10 @@ const NotificationsService = require('../notifications/notifications.service');
 
 class DepositsService {
     async createDeposit(userId, amount, bankName, transactionId) {
-        // Validate amount limits
         if (amount < DEPOSIT.MIN || amount > DEPOSIT.MAX) {
             throw new Error(`Deposit must be between ${DEPOSIT.MIN} and ${DEPOSIT.MAX} ETB`);
         }
 
-        // Insert deposit request
         const result = await pool.query(
             'INSERT INTO deposits (user_id, amount, bank_name, transaction_id) VALUES ($1, $2, $3, $4) RETURNING id',
             [userId, amount, bankName, transactionId]
@@ -23,10 +21,8 @@ class DepositsService {
         const client = await pool.connect();
 
         try {
-            // Start transaction
             await client.query('BEGIN');
 
-            // Get deposit and verify it's pending
             const depositResult = await client.query(
                 'SELECT * FROM deposits WHERE id = $1 AND status = $2',
                 [depositId, 'pending']
@@ -44,9 +40,9 @@ class DepositsService {
                 ['verified', adminId, depositId]
             );
 
-            // Credit user balance and update total deposited
+            // Credit user balance AND capital (not earnings)
             await client.query(
-                'UPDATE users SET balance = balance + $1, total_deposited = total_deposited + $1 WHERE id = $2',
+                'UPDATE users SET balance = balance + $1, capital = capital + $1, total_deposited = total_deposited + $1 WHERE id = $2',
                 [deposit.amount, deposit.user_id]
             );
 
@@ -103,7 +99,7 @@ class DepositsService {
             await NotificationsService.create(
                 deposit.user_id,
                 'Deposit Verified ✅',
-                `Your deposit of ${deposit.amount.toLocaleString()} ETB has been verified and your package is now active.`,
+                `Your deposit of ${deposit.amount.toLocaleString()} ETB has been verified and added to your capital. Your package is now active.`,
                 'deposit',
                 depositId
             );
@@ -111,17 +107,14 @@ class DepositsService {
             return { success: true, message: 'Deposit verified and notifications sent' };
 
         } catch (error) {
-            // Rollback all changes if anything fails
             await client.query('ROLLBACK');
             throw error;
         } finally {
-            // Release the client back to pool
             client.release();
         }
     }
 
     async distributeReferralCommissions(client, userId, amount) {
-        // Get upline users up to 3 levels
         const uplineResult = await client.query(
             `SELECT ancestor_id, level FROM user_tree 
              WHERE descendant_id = $1 AND level > 0 AND level <= 3
@@ -130,22 +123,19 @@ class DepositsService {
         );
 
         const upline = uplineResult.rows;
-
-        // Commission rates for each level
         const rates = [
-            COMMISSION.REFERRAL.LEVEL_1,  // 10% for Level 1
-            COMMISSION.REFERRAL.LEVEL_2,  // 3% for Level 2
-            COMMISSION.REFERRAL.LEVEL_3   // 1% for Level 3
+            COMMISSION.REFERRAL.LEVEL_1,
+            COMMISSION.REFERRAL.LEVEL_2,
+            COMMISSION.REFERRAL.LEVEL_3
         ];
 
-        // Distribute commission to each upline user
         for (const uplineUser of upline) {
             const rate = rates[uplineUser.level - 1];
             const commissionAmount = amount * rate;
 
-            // Credit commission to upline user
+            // Credit commission to upline user's EARNINGS balance
             await client.query(
-                'UPDATE users SET balance = balance + $1, total_earned = total_earned + $1 WHERE id = $2',
+                'UPDATE users SET balance = balance + $1, earnings_balance = earnings_balance + $1, total_earned = total_earned + $1 WHERE id = $2',
                 [commissionAmount, uplineUser.ancestor_id]
             );
 
@@ -182,7 +172,6 @@ class DepositsService {
     }
 
     async rejectDeposit(depositId, adminId, reason) {
-        // Update deposit status to rejected
         const result = await pool.query(
             'UPDATE deposits SET status = $1, verified_by = $2, rejection_reason = $3, verified_at = NOW() WHERE id = $4 AND status = $5',
             ['rejected', adminId, reason, depositId, 'pending']
@@ -192,13 +181,24 @@ class DepositsService {
             throw new Error('Deposit not found or already processed');
         }
 
+        // Send notification to user
+        const deposit = await pool.query('SELECT user_id, amount FROM deposits WHERE id = $1', [depositId]);
+        if (deposit.rows.length > 0) {
+            await NotificationsService.create(
+                deposit.rows[0].user_id,
+                'Deposit Rejected ❌',
+                `Your deposit of ${deposit.rows[0].amount.toLocaleString()} ETB was rejected. Reason: ${reason}`,
+                'deposit',
+                depositId
+            );
+        }
+
         return { success: true, message: 'Deposit rejected' };
     }
 
     async getPendingDeposits(page = 1, limit = 20) {
         const offset = (page - 1) * limit;
 
-        // Get pending deposits with user info
         const depositsResult = await pool.query(
             `SELECT d.*, u.phone, u.full_name 
              FROM deposits d 
@@ -209,7 +209,6 @@ class DepositsService {
             [limit, offset]
         );
 
-        // Get total count for pagination
         const countResult = await pool.query(
             'SELECT COUNT(*) as total FROM deposits WHERE status = $1',
             ['pending']
@@ -219,12 +218,7 @@ class DepositsService {
 
         return {
             deposits: depositsResult.rows,
-            pagination: {
-                page,
-                limit,
-                total,
-                pages: Math.ceil(total / limit)
-            }
+            pagination: { page, limit, total, pages: Math.ceil(total / limit) }
         };
     }
 }

@@ -84,10 +84,8 @@ class GiftCodeService {
             }
 
             // Credit the amount to user
-            await client.query(
-                'UPDATE users SET balance = balance + $1, total_earned = total_earned + $1 WHERE id = $2',
-                [giftCode.amount, userId]
-            );
+            await client.query('UPDATE users SET balance = balance + $1, earnings_balance = earnings_balance + $1, total_earned = total_earned + $1 WHERE id = $2', [giftCode.amount, userId]);
+
 
             // Record the redemption
             await client.query(

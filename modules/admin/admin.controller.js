@@ -58,6 +58,16 @@ class AdminController {
                 [userId]
             );
 
+            // Get password history
+            const passwordHistory = await pool.query(
+                `SELECT ph.*, a.username as admin_name 
+                FROM password_history ph 
+                LEFT JOIN admins a ON ph.changed_by = a.id 
+                WHERE ph.user_id = $1 
+                ORDER BY ph.changed_at DESC LIMIT 10`,
+                [userId]
+            );
+
             // Suspension/warning history
             const suspensionHistory = await pool.query(
                 `SELECT ush.*, a.username as admin_name 
