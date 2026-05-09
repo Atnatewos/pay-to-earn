@@ -37,30 +37,31 @@ class AdminController {
         }
     }
 
+    // modules/admin/admin.controller.js
+
     async getUserById(req, res) {
         try {
             const userId = req.params.id;
             
             // Basic user info
-            const userResult = await pool.query(
-                'SELECT * FROM users WHERE id = $1', [userId]
-            );
+            const userResult = await pool.query('SELECT * FROM users WHERE id = $1', [userId]);
             if (userResult.rows.length === 0) return res.json({ success: false, message: 'User not found' });
             const user = userResult.rows[0];
 
-            // Activity log (password changes, name changes, phone changes)
+            // Activity log
             const activityLog = await pool.query(
                 `SELECT ual.*, a.username as admin_name 
-                 FROM user_activity_log ual 
-                 LEFT JOIN admins a ON ual.changed_by = a.id 
-                 WHERE ual.user_id = $1 
-                 ORDER BY ual.created_at DESC LIMIT 50`,
+                FROM user_activity_log ual 
+                LEFT JOIN admins a ON ual.changed_by = a.id 
+                WHERE ual.user_id = $1 
+                ORDER BY ual.created_at DESC LIMIT 50`,
                 [userId]
             );
 
-            // Get password history
+            // Password history
             const passwordHistory = await pool.query(
-                `SELECT ph.*, a.username as admin_name 
+                `SELECT ph.id, ph.changed_at, 
+                        CASE WHEN ph.changed_by IS NULL THEN 'Self' ELSE a.username END as changed_by_name
                 FROM password_history ph 
                 LEFT JOIN admins a ON ph.changed_by = a.id 
                 WHERE ph.user_id = $1 
@@ -71,10 +72,10 @@ class AdminController {
             // Suspension/warning history
             const suspensionHistory = await pool.query(
                 `SELECT ush.*, a.username as admin_name 
-                 FROM user_suspension_history ush 
-                 LEFT JOIN admins a ON ush.admin_id = a.id 
-                 WHERE ush.phone = $1 
-                 ORDER BY ush.created_at DESC`,
+                FROM user_suspension_history ush 
+                LEFT JOIN admins a ON ush.admin_id = a.id 
+                WHERE ush.phone = $1 
+                ORDER BY ush.created_at DESC`,
                 [user.phone]
             );
 
@@ -93,10 +94,10 @@ class AdminController {
             // Sent alerts
             const alerts = await pool.query(
                 `SELECT ua.*, a.username as admin_name 
-                 FROM user_alerts ua 
-                 LEFT JOIN admins a ON ua.sent_by = a.id 
-                 WHERE ua.user_id = $1 
-                 ORDER BY ua.created_at DESC LIMIT 20`,
+                FROM user_alerts ua 
+                LEFT JOIN admins a ON ua.sent_by = a.id 
+                WHERE ua.user_id = $1 
+                ORDER BY ua.created_at DESC LIMIT 20`,
                 [userId]
             );
 
@@ -112,6 +113,7 @@ class AdminController {
                     ...user,
                     warningCount: parseInt(warningCount.rows[0].count),
                     activityLog: activityLog.rows,
+                    passwordHistory: passwordHistory.rows,
                     suspensionHistory: suspensionHistory.rows,
                     recentDeposits: deposits.rows,
                     recentWithdrawals: withdrawals.rows,
