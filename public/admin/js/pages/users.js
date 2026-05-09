@@ -234,35 +234,132 @@ class AdminUsers {
 
     // ============ MODAL METHODS ============
     static async editUserModal(id, phone, name) {
-        const newName = await Dialog.prompt('Edit Full Name', 'Enter full name', name);
-        if (newName === null) return;
-        const newPhone = await Dialog.prompt('Edit Phone Number', 'Enter phone number', phone);
-        if (newPhone === null) return;
-        const confirmed = await Dialog.confirm('Save changes?', 'Update User', '💾 Save', 'Cancel');
-        if (!confirmed) return;
-        const token = localStorage.getItem('admin_token'); const apiUrl = APP_CONFIG.apiUrl;
-        const body = {};
-        if (newName !== name) body.fullName = newName;
-        if (newPhone !== phone) body.phone = newPhone;
-        if (Object.keys(body).length === 0) return;
-        await fetch(`${apiUrl}/admin/users/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(body) });
-        document.querySelector('.modal-overlay')?.remove(); router.navigate('/admin/users');
+        const overlay = document.createElement('div');
+        overlay.className = 'modal-overlay';
+        overlay.innerHTML = `
+            <div class="modal animate-scaleIn" style="max-width:420px;">
+                <div class="modal-header">
+                    <h3 class="modal-title">✏️ Edit User</h3>
+                    <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">×</button>
+                </div>
+                <form id="editUserForm">
+                    <div class="form-group">
+                        <label class="form-label">Full Name</label>
+                        <input type="text" class="form-input" id="editFullName" value="${name||''}" placeholder="Full name">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Phone Number</label>
+                        <input type="text" class="form-input" id="editPhone" value="${phone}" placeholder="Phone">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">New Password (leave blank to keep current)</label>
+                        <input type="text" class="form-input" id="editPassword" placeholder="New password (min 6 chars)">
+                    </div>
+                    <div class="flex gap-2 mt-4">
+                        <button type="button" class="btn btn-outline btn-block" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
+                        <button type="submit" class="btn btn-primary btn-block">💾 Save All Changes</button>
+                    </div>
+                </form>
+            </div>
+        `;
+        overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+        document.body.appendChild(overlay);
+
+        document.getElementById('editUserForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const newName = document.getElementById('editFullName').value.trim();
+            const newPhone = document.getElementById('editPhone').value.trim();
+            const newPass = document.getElementById('editPassword').value.trim();
+
+            const body = {};
+            if (newName !== (name||'')) body.fullName = newName;
+            if (newPhone !== phone) body.phone = newPhone;
+            if (newPass && newPass.length >= 6) body.password = newPass;
+            else if (newPass && newPass.length < 6) {
+                await Dialog.alert('Password must be at least 6 characters', 'Invalid', 'warning');
+                return;
+            }
+            
+            if (Object.keys(body).length === 0) {
+                await Dialog.alert('No changes made', 'Info', 'info');
+                return;
+            }
+
+            const token = localStorage.getItem('admin_token');
+            const apiUrl = APP_CONFIG.apiUrl;
+            try {
+                const res = await fetch(`${apiUrl}/admin/users/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify(body)
+                });
+                const data = await res.json();
+                if (data.success) {
+                    await Dialog.alert('User updated successfully!', 'Updated', 'success');
+                    overlay.remove();
+                    document.querySelector('.modal-overlay')?.remove();
+                    router.navigate('/admin/users');
+                } else {
+                    await Dialog.alert(data.message || 'Failed to update', 'Error', 'error');
+                }
+            } catch (error) {
+                await Dialog.alert('Failed to update user', 'Error', 'error');
+            }
+        });
     }
 
     static async notifyUserModal(id) {
-        const title = await Dialog.prompt('Notification Title', 'Enter title...'); if (!title) return;
-        const message = await Dialog.prompt('Notification Message', 'Enter message...'); if (!message) return;
-        const token = localStorage.getItem('admin_token'); const apiUrl = APP_CONFIG.apiUrl;
-        await fetch(`${apiUrl}/admin/users/${id}/notify`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ title, message }) });
-        await Dialog.alert('Notification sent!', 'Sent', 'success');
+        const overlay = document.createElement('div');
+        overlay.className = 'modal-overlay';
+        overlay.innerHTML = `
+            <div class="modal animate-scaleIn" style="max-width:420px;">
+                <div class="modal-header"><h3 class="modal-title">📢 Send Notification</h3><button class="modal-close" onclick="this.closest('.modal-overlay').remove()">×</button></div>
+                <form id="notifyForm">
+                    <div class="form-group"><label class="form-label">Title</label><input type="text" class="form-input" id="notifyTitle" placeholder="Notification title" required></div>
+                    <div class="form-group"><label class="form-label">Message</label><textarea class="form-textarea" id="notifyMessage" rows="3" placeholder="Notification message" required></textarea></div>
+                    <div class="flex gap-2 mt-4"><button type="button" class="btn btn-outline btn-block" onclick="this.closest('.modal-overlay').remove()">Cancel</button><button type="submit" class="btn btn-primary btn-block">📢 Send</button></div>
+                </form>
+            </div>
+        `;
+        overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+        document.body.appendChild(overlay);
+        document.getElementById('notifyForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const title = document.getElementById('notifyTitle').value.trim();
+            const message = document.getElementById('notifyMessage').value.trim();
+            if (!title || !message) return;
+            const token = localStorage.getItem('admin_token'); const apiUrl = APP_CONFIG.apiUrl;
+            await fetch(`${apiUrl}/admin/users/${id}/notify`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ title, message }) });
+            await Dialog.alert('Notification sent!', 'Sent', 'success');
+            overlay.remove();
+        });
     }
 
     static async alertUserModal(id) {
-        const title = await Dialog.prompt('Alert Title', 'Enter alert title...'); if (!title) return;
-        const message = await Dialog.prompt('Alert Message', 'Enter alert message...'); if (!message) return;
-        const token = localStorage.getItem('admin_token'); const apiUrl = APP_CONFIG.apiUrl;
-        await fetch(`${apiUrl}/admin/users/${id}/alert`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ customTitle: title, customMessage: message }) });
-        await Dialog.alert('Alert sent!', 'Sent', 'success');
+        const overlay = document.createElement('div');
+        overlay.className = 'modal-overlay';
+        overlay.innerHTML = `
+            <div class="modal animate-scaleIn" style="max-width:420px;">
+                <div class="modal-header"><h3 class="modal-title">🔔 Send Alert</h3><button class="modal-close" onclick="this.closest('.modal-overlay').remove()">×</button></div>
+                <form id="alertForm">
+                    <div class="form-group"><label class="form-label">Title</label><input type="text" class="form-input" id="alertTitle" placeholder="Alert title" required></div>
+                    <div class="form-group"><label class="form-label">Message</label><textarea class="form-textarea" id="alertMessage" rows="3" placeholder="Alert message" required></textarea></div>
+                    <div class="flex gap-2 mt-4"><button type="button" class="btn btn-outline btn-block" onclick="this.closest('.modal-overlay').remove()">Cancel</button><button type="submit" class="btn btn-primary btn-block">🔔 Send</button></div>
+                </form>
+            </div>
+        `;
+        overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+        document.body.appendChild(overlay);
+        document.getElementById('alertForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const title = document.getElementById('alertTitle').value.trim();
+            const message = document.getElementById('alertMessage').value.trim();
+            if (!title || !message) return;
+            const token = localStorage.getItem('admin_token'); const apiUrl = APP_CONFIG.apiUrl;
+            await fetch(`${apiUrl}/admin/users/${id}/alert`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ customTitle: title, customMessage: message }) });
+            await Dialog.alert('Alert sent!', 'Sent', 'success');
+            overlay.remove();
+        });
     }
 
     static async warnUserModal(id) {
