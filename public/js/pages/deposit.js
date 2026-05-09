@@ -25,7 +25,7 @@ class DepositPage {
                     <div class="card p-4 mb-4" style="background:rgba(16,185,129,0.08); border:2px solid rgba(16,185,129,0.2);">
                         <p class="text-sm font-semibold mb-2">📋 Transfer to:</p>
                         <p class="font-bold">Bank: <strong>${APP_CONFIG.bankName}</strong></p>
-                        <p class="font-bold">Account: <strong>${APP_CONFIG.bankAccount}</strong></p>
+                        <p class="font-bold">Account: <strong>${APP_CONFIG.bankAccount}</strong> <button class="btn btn-ghost btn-sm" onclick="navigator.clipboard.writeText('${APP_CONFIG.bankAccount}'); Toast.show('Copied!')" title="Copy">📋 Copy</button></p>
                         <p class="font-bold">Name: <strong>${APP_CONFIG.bankHolder}</strong></p>
                     </div>
                     <form id="depositForm">
