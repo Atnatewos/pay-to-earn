@@ -59,7 +59,8 @@ class AdminDeposits {
     }
 
     static async verifyDeposit(id) {
-        const confirmed = await Dialog.confirm('Verify this deposit? Package will be activated and commissions distributed.', 'Verify Deposit', '✅ Verify', 'Cancel');
+        const MoneyService = require('../money/money.service');
+        await MoneyService.credit(deposit.user_id, deposit.amount, 'capital', 'deposit', 'Deposit verified', depositId);
         if (!confirmed) return;
         
         const token = localStorage.getItem('admin_token');

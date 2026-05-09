@@ -110,14 +110,14 @@ class HomePage {
                     <div class="balance-hero-label">Total Balance</div>
                     
                     <div class="balance-hero-amount">${this.formatETB(user.balance)} ETB</div>
-                    <div style="display:flex;gap:12px;margin-top:12px;">
-                        <div style="flex:1;background:rgba(255,255,255,0.2);padding:10px 12px;border-radius:12px;">
-                            <div style="font-size:10px;opacity:0.7;">💎 Capital (Locked)</div>
-                            <div style="font-weight:700;font-size:14px;">${this.formatETB(user.capital || 0)} ETB</div>
+                    <div style="display:flex;gap:10px;margin-top:10px;">
+                        <div style="flex:1;background:rgba(255,255,255,0.2);padding:8px 12px;border-radius:10px;">
+                            <div style="font-size:10px;opacity:0.7;">💎 Capital</div>
+                            <div style="font-weight:700;font-size:13px;">${this.formatETB(user.capital || 0)} ETB</div>
                         </div>
-                        <div style="flex:1;background:rgba(255,255,255,0.2);padding:10px 12px;border-radius:12px;">
-                            <div style="font-size:10px;opacity:0.7;">💰 Earnings (Withdrawable)</div>
-                            <div style="font-weight:700;font-size:14px;">${this.formatETB(user.earnings_balance || 0)} ETB</div>
+                        <div style="flex:1;background:rgba(255,255,255,0.2);padding:8px 12px;border-radius:10px;">
+                            <div style="font-size:10px;opacity:0.7;">💰 Withdrawable</div>
+                            <div style="font-weight:700;font-size:13px;">${this.formatETB(user.earnings_balance || 0)} ETB</div>
                         </div>
                     </div>
 

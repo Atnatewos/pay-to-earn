@@ -99,10 +99,7 @@ class SalaryService {
             );
 
             // Credit salary to user balance
-            await client.query(
-                'UPDATE users SET balance = balance + $1, total_earned = total_earned + $1 WHERE id = $2',
-                [rank.salary, userId]
-            );
+            await client.query('UPDATE users SET balance = balance + $1, earnings_balance = earnings_balance + $1, total_earned = total_earned + $1 WHERE id = $2', [rank.salary, userId]);
 
             // Get updated balance for transaction record
             const userResult = await client.query(

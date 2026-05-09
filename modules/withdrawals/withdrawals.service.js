@@ -11,30 +11,32 @@ class WithdrawalsService {
         try {
             await client.query('BEGIN');
 
-            // Verify password if required
+            // Password validation
             if (withdrawalConfig.REQUIRE_PASSWORD) {
-                if (!password) throw new Error('Password is required for withdrawal');
-                const user = await client.query('SELECT password_hash FROM users WHERE id = $1', [userId]);
-                const valid = await bcrypt.compare(password, user.rows[0].password_hash);
+                if (!password || password.trim() === '') {
+                    throw new Error('Password is required for withdrawal');
+                }
+                const userCheck = await client.query('SELECT password_hash FROM users WHERE id = $1', [userId]);
+                if (userCheck.rows.length === 0) throw new Error('User not found');
+                const valid = await bcrypt.compare(password.trim(), userCheck.rows[0].password_hash);
                 if (!valid) throw new Error('Incorrect password');
             }
 
-            // Check if amount is in fixed amounts
+            // Validate amount
             if (!withdrawalConfig.FIXED_AMOUNTS.includes(parseInt(amount))) {
-                throw new Error(`Withdrawal amount must be one of: ${withdrawalConfig.FIXED_AMOUNTS.join(', ')} ETB`);
+                throw new Error(`Amount must be: ${withdrawalConfig.FIXED_AMOUNTS.join(', ')} ETB`);
             }
 
-            // Get user's earnings balance (cannot withdraw capital)
+            // Check earnings balance
             const userResult = await client.query(
                 'SELECT earnings_balance, capital, balance FROM users WHERE id = $1',
                 [userId]
             );
-
             const user = userResult.rows[0];
             const earningsBalance = parseFloat(user.earnings_balance || 0);
-            
+
             if (earningsBalance < amount) {
-                throw new Error(`Insufficient earnings balance. You can only withdraw from task earnings and commissions (${earningsBalance.toLocaleString()} ETB available). Your capital (${parseFloat(user.capital).toLocaleString()} ETB) is locked.`);
+                throw new Error(`Insufficient earnings. Available: ${earningsBalance.toLocaleString()} ETB. Capital is locked.`);
             }
 
             // Verify bank account
@@ -44,13 +46,13 @@ class WithdrawalsService {
             );
             if (accountResult.rows.length === 0) throw new Error('Bank account not found');
 
-            // Deduct from earnings balance and total balance
+            // Deduct from earnings
             await client.query(
                 'UPDATE users SET balance = balance - $1, earnings_balance = earnings_balance - $1 WHERE id = $2',
                 [amount, userId]
             );
 
-            // Create withdrawal request
+            // Create withdrawal
             const withdrawResult = await client.query(
                 'INSERT INTO withdrawals (user_id, amount, full_name, phone_number, bank_account_id) VALUES ($1, $2, $3, $4, $5) RETURNING id',
                 [userId, amount, fullName, phoneNumber, bankAccountId]
@@ -68,7 +70,9 @@ class WithdrawalsService {
         } catch (error) {
             await client.query('ROLLBACK');
             throw error;
-        } finally { client.release(); }
+        } finally {
+            client.release();
+        }
     }
 
     async processWithdrawal(withdrawalId, adminId, status, reason = null) {
@@ -88,16 +92,14 @@ class WithdrawalsService {
                     ['completed', adminId, withdrawalId]
                 );
                 await client.query('UPDATE users SET total_withdrawn = total_withdrawn + $1 WHERE id = $2', [withdrawal.amount, withdrawal.user_id]);
-                
-                // Send success alert
+
                 await client.query(
                     'INSERT INTO user_alerts (user_id, title, message, type, icon, color, sent_by) VALUES ($1, $2, $3, $4, $5, $6, $7)',
-                    [withdrawal.user_id, '🎉 Withdrawal Approved!', `Your withdrawal of ${withdrawal.amount.toLocaleString()} ETB has been approved and sent to your bank account.`, 'success', '🎊', 'gradient-accent', adminId]
+                    [withdrawal.user_id, '🎉 Withdrawal Approved!', `Your withdrawal of ${withdrawal.amount.toLocaleString()} ETB has been approved.`, 'success', '🎊', 'gradient-accent', adminId]
                 );
-                await NotificationsService.create(withdrawal.user_id, 'Withdrawal Approved 🎉', `Your withdrawal of ${withdrawal.amount.toLocaleString()} ETB has been approved.`, 'withdrawal', withdrawalId);
+                await NotificationsService.create(withdrawal.user_id, 'Withdrawal Approved 🎉', `${withdrawal.amount.toLocaleString()} ETB approved.`, 'withdrawal', withdrawalId);
 
             } else if (status === 'rejected') {
-                // Refund to earnings balance
                 await client.query(
                     'UPDATE users SET balance = balance + $1, earnings_balance = earnings_balance + $1 WHERE id = $2',
                     [withdrawal.amount, withdrawal.user_id]
@@ -106,15 +108,13 @@ class WithdrawalsService {
                     'UPDATE withdrawals SET status = $1, processed_by = $2, processed_at = NOW(), reason = $3 WHERE id = $4',
                     ['rejected', adminId, reason, withdrawalId]
                 );
-                
-                // Record refund
+
                 const updatedUser = await client.query('SELECT balance FROM users WHERE id = $1', [withdrawal.user_id]);
                 await client.query(
                     'INSERT INTO transactions (user_id, type, amount, balance_after, category, reference_id, description) VALUES ($1, $2, $3, $4, $5, $6, $7)',
                     [withdrawal.user_id, 'credit', withdrawal.amount, updatedUser.rows[0].balance, 'withdrawal_refund', withdrawalId, `Rejected: ${reason}`]
                 );
-                
-                // Send rejection alert
+
                 await client.query(
                     'INSERT INTO user_alerts (user_id, title, message, type, icon, color, sent_by) VALUES ($1, $2, $3, $4, $5, $6, $7)',
                     [withdrawal.user_id, '❌ Withdrawal Rejected', `Your withdrawal of ${withdrawal.amount.toLocaleString()} ETB was rejected. Reason: ${reason}. Amount refunded.`, 'danger', '❌', 'color-danger', adminId]
@@ -127,7 +127,9 @@ class WithdrawalsService {
         } catch (error) {
             await client.query('ROLLBACK');
             throw error;
-        } finally { client.release(); }
+        } finally {
+            client.release();
+        }
     }
 
     async getHistory(userId, page = 1, limit = 20) {

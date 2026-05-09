@@ -1,5 +1,6 @@
+// public/js/pages/deposit.js
 class DepositPage {
-    constructor(container) { this.container = container; }
+    constructor(container) { this.container = container; this.historyFilter = 'all'; }
 
     render() {
         Navbar.render('Deposit', true);
@@ -21,7 +22,6 @@ class DepositPage {
                             </div>
                         </div>
                     ` : ''}
-                    // bank info:
                     <div class="card p-4 mb-4" style="background:rgba(16,185,129,0.08); border:2px solid rgba(16,185,129,0.2);">
                         <p class="text-sm font-semibold mb-2">📋 Transfer to:</p>
                         <p class="font-bold">Bank: <strong>${APP_CONFIG.bankName}</strong></p>
@@ -45,6 +45,12 @@ class DepositPage {
 
                 <div class="card mt-4">
                     <h4 class="mb-3">📋 Deposit History</h4>
+                    <div class="filter-tabs mb-3">
+                        <button class="filter-tab ${this.historyFilter==='all'?'active':''}" onclick="this.closest('.page').querySelectorAll('.filter-tab').forEach(b=>b.classList.remove('active'));this.classList.add('active');DepositPage.filterHistory('all')">All</button>
+                        <button class="filter-tab ${this.historyFilter==='pending'?'active':''}" onclick="this.closest('.page').querySelectorAll('.filter-tab').forEach(b=>b.classList.remove('active'));this.classList.add('active');DepositPage.filterHistory('pending')">⏳ Pending</button>
+                        <button class="filter-tab ${this.historyFilter==='verified'?'active':''}" onclick="this.closest('.page').querySelectorAll('.filter-tab').forEach(b=>b.classList.remove('active'));this.classList.add('active');DepositPage.filterHistory('verified')">✅ Approved</button>
+                        <button class="filter-tab ${this.historyFilter==='rejected'?'active':''}" onclick="this.closest('.page').querySelectorAll('.filter-tab').forEach(b=>b.classList.remove('active'));this.classList.add('active');DepositPage.filterHistory('rejected')">❌ Rejected</button>
+                    </div>
                     <div id="depositHistory"><div class="loader"><div class="spinner"></div></div></div>
                 </div>
             </div>
@@ -68,7 +74,6 @@ class DepositPage {
                 await API.post('/deposits', { amount, bankName, transactionId });
                 SuccessModal.show('Deposit Submitted!', 'Your deposit is pending verification. We will review it within 24 hours.', [
                     { label: 'Amount', value: `${amount.toLocaleString()} ETB` },
-                    { label: 'Bank', value: bankName },
                     { label: 'Status', value: '⏳ Pending Verification' }
                 ], 'Go to Home', () => router.navigate('/home'));
             } catch (error) { Toast.show(error.message, 'error'); }
@@ -81,19 +86,38 @@ class DepositPage {
         try {
             const data = await API.get('/deposits/history');
             const deposits = data.data || [];
-            const container = document.getElementById('depositHistory');
-            if (deposits.length === 0) { container.innerHTML = '<p class="text-center text-secondary py-3">No deposits yet</p>'; return; }
-            container.innerHTML = deposits.map(d => `
-                <div class="list-item">
-                    <div class="list-item-icon">💳</div>
-                    <div class="list-item-content">
-                        <div class="list-item-title">${Number(d.amount).toLocaleString()} ETB</div>
-                        <div class="list-item-subtitle">${d.bank_name} | ${new Date(d.created_at).toLocaleDateString()}</div>
-                    </div>
-                    <span class="badge ${d.status === 'verified' ? 'badge-success' : d.status === 'rejected' ? 'badge-danger' : 'badge-warning'}">${d.status}</span>
+            this.renderHistory(deposits);
+        } catch (error) {
+            document.getElementById('depositHistory').innerHTML = '<p class="text-center text-secondary py-3">Failed to load history</p>';
+        }
+    }
+
+    renderHistory(deposits) {
+        const filtered = this.historyFilter === 'all' ? deposits : deposits.filter(d => d.status === this.historyFilter);
+        const container = document.getElementById('depositHistory');
+        
+        if (filtered.length === 0) {
+            container.innerHTML = '<p class="text-center text-secondary py-4">No deposits found</p>';
+            return;
+        }
+
+        container.innerHTML = filtered.map(d => `
+            <div class="list-item">
+                <div class="list-item-icon">💳</div>
+                <div class="list-item-content">
+                    <div class="list-item-title">${Number(d.amount).toLocaleString()} ETB</div>
+                    <div class="list-item-subtitle">${d.bank_name} | ${new Date(d.created_at).toLocaleString()}</div>
+                    ${d.transaction_id ? `<div class="text-xs text-muted">Ref: ${d.transaction_id}</div>` : ''}
                 </div>
-            `).join('');
-        } catch (error) { document.getElementById('depositHistory').innerHTML = '<p class="text-center text-secondary">Failed to load</p>'; }
+                <span class="badge ${d.status==='verified'?'badge-success':d.status==='rejected'?'badge-danger':'badge-warning'}">${d.status}</span>
+            </div>
+        `).join('');
+    }
+
+    static filterHistory(filter) {
+        const instance = router.currentPage;
+        instance.historyFilter = filter;
+        instance.loadHistory();
     }
 
     unmount() {}

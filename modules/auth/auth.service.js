@@ -80,11 +80,27 @@ class AuthService {
         const validPassword = await bcrypt.compare(password, user.password_hash);
         if (!validPassword) throw new Error('Invalid phone or password');
         const token = jwt.sign({ id: user.id, phone: user.phone, isAdmin: false }, JWT.SECRET, { expiresIn: JWT.EXPIRES_IN });
-        return { token, user: { id: user.id, phone: user.phone, fullName: user.full_name, avatarUrl: user.avatar_url, balance: user.balance, activePackage: user.active_package } };
+        return { 
+            token, 
+            user: { 
+                id: user.id, 
+                phone: user.phone, 
+                fullName: user.full_name, 
+                avatarUrl: user.avatar_url, 
+                balance: user.balance, 
+                capital: user.capital,
+                earnings_balance: user.earnings_balance,
+                activePackage: user.active_package,
+                status: user.status
+            } 
+        };
     }
 
     async getUserProfile(userId) {
-        const result = await pool.query('SELECT id, phone, full_name, avatar_url, referral_code, status, balance, total_earned, total_deposited, active_package, package_expiry, created_at FROM users WHERE id = $1', [userId]);
+        const result = await pool.query(
+            'SELECT id, phone, full_name, avatar_url, referral_code, status, balance, capital, earnings_balance, total_earned, total_deposited, active_package, package_expiry, created_at FROM users WHERE id = $1',
+            [userId]
+        );
         if (result.rows.length === 0) throw new Error('User not found');
         return result.rows[0];
     }

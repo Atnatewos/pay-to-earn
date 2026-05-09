@@ -1,12 +1,11 @@
 // modules/giftcodes/giftcodes.service.js
 const pool = require('../../config/db');
+const MoneyService = require('../money/money.service');
 
 class GiftCodeService {
     async createCode(adminId, amount, maxUses = 1, expiresAt = null) {
-        // Generate a unique gift code
         const code = await this.generateUniqueCode();
 
-        // Insert the gift code into database
         const result = await pool.query(
             'INSERT INTO gift_codes (code, amount, max_uses, created_by, expires_at) VALUES ($1, $2, $3, $4, $5) RETURNING id',
             [code, amount, maxUses, adminId, expiresAt]
@@ -22,23 +21,16 @@ class GiftCodeService {
     }
 
     async generateUniqueCode() {
-        // Generate random alphanumeric code
         const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
         let code;
         let exists = true;
 
-        // Keep generating until we find a unique code
         while (exists) {
             code = 'EARN-';
             for (let i = 0; i < 8; i++) {
                 code += chars[Math.floor(Math.random() * chars.length)];
             }
-
-            const result = await pool.query(
-                'SELECT id FROM gift_codes WHERE code = $1',
-                [code]
-            );
-
+            const result = await pool.query('SELECT id FROM gift_codes WHERE code = $1', [code]);
             exists = result.rows.length > 0;
         }
 
@@ -83,9 +75,15 @@ class GiftCodeService {
                 throw new Error('You have already redeemed this code');
             }
 
-            // Credit the amount to user
-            await client.query('UPDATE users SET balance = balance + $1, earnings_balance = earnings_balance + $1, total_earned = total_earned + $1 WHERE id = $2', [giftCode.amount, userId]);
-
+            // Credit to user's EARNINGS via MoneyService (handles balance + transaction)
+            await MoneyService.credit(
+                userId, 
+                giftCode.amount, 
+                'earnings', 
+                'gift_code', 
+                'Gift code redeemed', 
+                giftCode.id
+            );
 
             // Record the redemption
             await client.query(
@@ -107,19 +105,6 @@ class GiftCodeService {
                 );
             }
 
-            // Get updated balance for transaction record
-            const userResult = await client.query(
-                'SELECT balance FROM users WHERE id = $1',
-                [userId]
-            );
-
-            // Record transaction in ledger
-            await client.query(
-                `INSERT INTO transactions (user_id, type, amount, balance_after, category, reference_id, description)
-                 VALUES ($1, 'credit', $2, $3, 'gift_code', $4, $5)`,
-                [userId, giftCode.amount, userResult.rows[0].balance, giftCode.id, 'Gift code redeemed']
-            );
-
             await client.query('COMMIT');
 
             return {
@@ -138,20 +123,15 @@ class GiftCodeService {
 
     async getAdminCodes(adminId, page = 1, limit = 20) {
         const offset = (page - 1) * limit;
-
-        // Get codes created by this admin
         const result = await pool.query(
             'SELECT * FROM gift_codes WHERE created_by = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3',
             [adminId, limit, offset]
         );
-
         return result.rows;
     }
 
     async getAllCodes(page = 1, limit = 20) {
         const offset = (page - 1) * limit;
-
-        // Get all codes with creator username
         const result = await pool.query(
             `SELECT gc.*, a.username as created_by_name 
              FROM gift_codes gc 
@@ -160,7 +140,6 @@ class GiftCodeService {
              LIMIT $1 OFFSET $2`,
             [limit, offset]
         );
-
         return result.rows;
     }
 }

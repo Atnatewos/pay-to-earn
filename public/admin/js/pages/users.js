@@ -41,9 +41,7 @@ class AdminUsers {
             const token = localStorage.getItem('admin_token');
             const apiUrl = APP_CONFIG.apiUrl;
             const params = new URLSearchParams({ page: this.currentPage, limit: 20, search: this.searchTerm, status: this.statusFilter });
-            const response = await fetch(`${apiUrl}/admin/users?${params}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
+            const response = await fetch(`${apiUrl}/admin/users?${params}`, { headers: { 'Authorization': `Bearer ${token}` } });
             const result = await response.json();
             const users = result.data || [];
             const pagination = result.pagination || {};
@@ -89,194 +87,13 @@ class AdminUsers {
     static doFilter(status) { const i = router.currentAdminPage; i.statusFilter = status; i.currentPage = 1; i.loadUsers(); }
     static goPage(p) { const i = router.currentAdminPage; i.currentPage = p; i.loadUsers(); window.scrollTo(0,0); }
 
-
-        // Replace the viewUser method
+    // ============ VIEW USER WITH ALL TABS ============
     static async viewUser(userId) {
         const token = localStorage.getItem('admin_token');
         const apiUrl = APP_CONFIG.apiUrl;
+
         try {
-            const response = await fetch(`${apiUrl}/admin/users/${userId}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            const result = await response.json();
-            const u = result.data;
-
-            const overlay = document.createElement('div');
-            overlay.className = 'modal-overlay';
-            overlay.innerHTML = `
-                <div class="modal animate-slideUp" style="max-width:500px">
-                    <div class="modal-header">
-                        <h3 class="modal-title">${u.full_name||u.phone}</h3>
-                        <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">×</button>
-                    </div>
-                    <div class="text-center mb-4">
-                        <div class="profile-avatar" style="margin:0 auto">${u.avatar_url||'👤'}</div>
-                        <p class="text-sm text-secondary mt-2">${u.phone}</p>
-                        <span class="badge ${u.status==='active'?'badge-success':'badge-danger'}">${u.status}</span>
-                        ${u.active_package?`<span class="badge badge-primary ml-1">${u.active_package}</span>`:''}
-                    </div>
-                    <div class="bank-info-card mb-3">
-                        <div class="bank-info-row"><span class="bank-info-label">User ID</span><span class="bank-info-value">#${u.id}</span></div>
-                        <div class="bank-info-row"><span class="bank-info-label">Phone</span><span class="bank-info-value">${u.phone}</span></div>
-                        <div class="bank-info-row"><span class="bank-info-label">Name</span><span class="bank-info-value">${u.full_name||'N/A'}</span></div>
-                        <div class="bank-info-row"><span class="bank-info-label">Balance</span><span class="bank-info-value font-bold">${Number(u.balance).toLocaleString()} ETB</span></div>
-                        <div class="bank-info-row"><span class="bank-info-label">Total Earned</span><span class="bank-info-value">${Number(u.total_earned).toLocaleString()} ETB</span></div>
-                        <div class="bank-info-row"><span class="bank-info-label">Referral Code</span><span class="bank-info-value">${u.referral_code}</span></div>
-                        <div class="bank-info-row"><span class="bank-info-label">Joined</span><span class="bank-info-value">${new Date(u.created_at).toLocaleDateString()}</span></div>
-                    </div>
-                    <div class="flex gap-2 mb-3">
-                        <button class="btn btn-outline btn-sm btn-block" id="editUserBtn">✏️ Edit</button>
-                        <button class="btn btn-outline btn-sm btn-block" id="notifyUserBtn">📢 Notify</button>
-                        <button class="btn btn-outline btn-sm btn-block" id="alertUserBtn">🔔 Alert</button>
-                    </div>
-                    <div id="editFormSection" style="display:none;"></div>
-                    <div class="flex gap-2">
-                        ${u.status==='active' ? `
-                            <button class="btn btn-warning btn-block" id="suspendUserBtn">⏸️ Suspend</button>
-                            <button class="btn btn-danger btn-block" id="banUserBtn">🚫 Ban</button>
-                        ` : `<button class="btn btn-success btn-block" id="activateUserBtn">✅ Activate</button>`}
-                    </div>
-                </div>
-            `;
-            overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
-            document.body.appendChild(overlay);
-
-            // Edit button
-            document.getElementById('editUserBtn').addEventListener('click', () => {
-                const section = document.getElementById('editFormSection');
-                section.style.display = 'block';
-                section.innerHTML = `
-                    <div class="card mb-3">
-                        <h4 class="mb-3">Edit User</h4>
-                        <div class="form-group">
-                            <label class="form-label">Full Name</label>
-                            <input type="text" class="form-input" id="editFullName" value="${u.full_name||''}" placeholder="Full name">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Phone Number</label>
-                            <input type="text" class="form-input" id="editPhone" value="${u.phone}" placeholder="Phone">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">New Password (leave blank to keep)</label>
-                            <input type="text" class="form-input" id="editPassword" placeholder="New password">
-                        </div>
-                        <button class="btn btn-primary btn-block" id="saveEditBtn">💾 Save Changes</button>
-                    </div>
-                `;
-                
-                document.getElementById('saveEditBtn').addEventListener('click', async () => {
-                    const fullName = document.getElementById('editFullName').value;
-                    const phone = document.getElementById('editPhone').value;
-                    const password = document.getElementById('editPassword').value;
-                    
-                    const body = {};
-                    if (fullName !== u.full_name) body.fullName = fullName;
-                    if (phone !== u.phone) body.phone = phone;
-                    if (password.trim()) body.password = password;
-                    
-                    if (Object.keys(body).length === 0) {
-                        await Dialog.alert('No changes made', 'Info', 'info');
-                        return;
-                    }
-                    
-                    try {
-                        const res = await fetch(`${apiUrl}/admin/users/${userId}`, {
-                            method: 'PUT',
-                            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                            body: JSON.stringify(body)
-                        });
-                        const data = await res.json();
-                        if (data.success) {
-                            await Dialog.alert('User updated successfully!', 'Updated', 'success');
-                            overlay.remove();
-                            router.navigate('/admin/users');
-                        } else {
-                            await Dialog.alert(data.message, 'Error', 'error');
-                        }
-                    } catch (error) {
-                        await Dialog.alert('Failed to update user', 'Error', 'error');
-                    }
-                });
-            });
-
-            // Notify button
-            document.getElementById('notifyUserBtn').addEventListener('click', async () => {
-                const title = await Dialog.prompt('Notification Title', 'Enter title...');
-                if (!title) return;
-                const message = await Dialog.prompt('Notification Message', 'Enter message...');
-                if (!message) return;
-                await fetch(`${apiUrl}/admin/users/${userId}/notify`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                    body: JSON.stringify({ title, message })
-                });
-                await Dialog.alert('Notification sent!', 'Sent', 'success');
-            });
-
-            // Alert button
-            document.getElementById('alertUserBtn').addEventListener('click', async () => {
-                const title = await Dialog.prompt('Alert Title', 'Enter alert title...');
-                if (!title) return;
-                const message = await Dialog.prompt('Alert Message', 'Enter alert message...');
-                if (!message) return;
-                await fetch(`${apiUrl}/admin/users/${userId}/alert`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                    body: JSON.stringify({ customTitle: title, customMessage: message })
-                });
-                await Dialog.alert('Popup alert sent to user!', 'Sent', 'success');
-            });
-
-            // Suspend/Ban/Activate handlers
-            if (u.status === 'active') {
-                document.getElementById('suspendUserBtn').addEventListener('click', async () => {
-                    const confirmed = await Dialog.confirm('Suspend this user?', 'Confirm', '⏸️ Suspend', 'Cancel', 'warning');
-                    if (!confirmed) return;
-                    await fetch(`${apiUrl}/admin/users/${userId}/suspend`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                        body: JSON.stringify({ action: 'suspend', reason: 'Admin action' })
-                    });
-                    overlay.remove();
-                    router.navigate('/admin/users');
-                });
-                document.getElementById('banUserBtn').addEventListener('click', async () => {
-                    const confirmed = await Dialog.confirm('Ban this user permanently?', 'Confirm', '🚫 Ban', 'Cancel', 'danger');
-                    if (!confirmed) return;
-                    await fetch(`${apiUrl}/admin/users/${userId}/suspend`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                        body: JSON.stringify({ action: 'ban', reason: 'Admin action' })
-                    });
-                    overlay.remove();
-                    router.navigate('/admin/users');
-                });
-            } else {
-                document.getElementById('activateUserBtn').addEventListener('click', async () => {
-                    const confirmed = await Dialog.confirm('Activate this user?', 'Confirm', '✅ Activate', 'Cancel');
-                    if (!confirmed) return;
-                    await fetch(`${apiUrl}/admin/users/${userId}/activate`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }
-                    });
-                    overlay.remove();
-                    router.navigate('/admin/users');
-                });
-            }
-        } catch (error) {
-            await Dialog.alert('Failed to load user details', 'Error', 'error');
-        }
-    }
-
-    // public/admin/js/pages/users.js - Replace viewUser method
-    static async viewUser(userId) {
-        const token = localStorage.getItem('admin_token');
-        const apiUrl = APP_CONFIG.apiUrl;
-        
-        try {
-            const response = await fetch(`${apiUrl}/admin/users/${userId}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
+            const response = await fetch(`${apiUrl}/admin/users/${userId}`, { headers: { 'Authorization': `Bearer ${token}` } });
             const result = await response.json();
             const u = result.data;
 
@@ -288,7 +105,7 @@ class AdminUsers {
                         <h3 class="modal-title">${u.full_name||u.phone}</h3>
                         <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">×</button>
                     </div>
-                    
+
                     <!-- User Summary Card -->
                     <div class="card card-gradient text-center mb-3">
                         <div class="profile-avatar" style="margin:0 auto">${u.avatar_url||'👤'}</div>
@@ -303,9 +120,10 @@ class AdminUsers {
 
                     <!-- Tabs -->
                     <div class="filter-tabs mb-3" style="position:sticky;top:0;z-index:10;background:white;">
-                        <button class="filter-tab active" onclick="this.parentElement.querySelectorAll('.filter-tab').forEach(b=>b.classList.remove('active'));this.classList.add('active');document.getElementById('tabInfo').style.display='block';document.getElementById('tabHistory').style.display='none';document.getElementById('tabFinance').style.display='none';">📋 Info</button>
-                        <button class="filter-tab" onclick="this.parentElement.querySelectorAll('.filter-tab').forEach(b=>b.classList.remove('active'));this.classList.add('active');document.getElementById('tabInfo').style.display='none';document.getElementById('tabHistory').style.display='block';document.getElementById('tabFinance').style.display='none';">📜 History</button>
-                        <button class="filter-tab" onclick="this.parentElement.querySelectorAll('.filter-tab').forEach(b=>b.classList.remove('active'));this.classList.add('active');document.getElementById('tabInfo').style.display='none';document.getElementById('tabHistory').style.display='none';document.getElementById('tabFinance').style.display='block';">💰 Finance</button>
+                        <button class="filter-tab active" id="tabBtnInfo">📋 Info</button>
+                        <button class="filter-tab" id="tabBtnHistory">📜 History</button>
+                        <button class="filter-tab" id="tabBtnFinance">💰 Finance</button>
+                        <button class="filter-tab" id="tabBtnPasswords">🔑 Passwords</button>
                     </div>
 
                     <!-- Info Tab -->
@@ -315,6 +133,8 @@ class AdminUsers {
                             <div class="bank-info-row"><span class="bank-info-label">Phone</span><span class="bank-info-value">${u.phone}</span></div>
                             <div class="bank-info-row"><span class="bank-info-label">Name</span><span class="bank-info-value">${u.full_name||'N/A'}</span></div>
                             <div class="bank-info-row"><span class="bank-info-label">Balance</span><span class="bank-info-value font-bold">${Number(u.balance||0).toLocaleString()} ETB</span></div>
+                            <div class="bank-info-row"><span class="bank-info-label">Capital</span><span class="bank-info-value">${Number(u.capital||0).toLocaleString()} ETB</span></div>
+                            <div class="bank-info-row"><span class="bank-info-label">Earnings</span><span class="bank-info-value">${Number(u.earnings_balance||0).toLocaleString()} ETB</span></div>
                             <div class="bank-info-row"><span class="bank-info-label">Total Earned</span><span class="bank-info-value">${Number(u.total_earned||0).toLocaleString()} ETB</span></div>
                             <div class="bank-info-row"><span class="bank-info-label">Total Deposited</span><span class="bank-info-value">${Number(u.total_deposited||0).toLocaleString()} ETB</span></div>
                             <div class="bank-info-row"><span class="bank-info-label">Referral Code</span><span class="bank-info-value">${u.referral_code}</span></div>
@@ -329,17 +149,23 @@ class AdminUsers {
                             <button class="btn btn-outline btn-sm btn-block" onclick="AdminUsers.warnUserModal(${u.id})">⚠️ Warn</button>
                         </div>
 
+                        <div class="flex gap-2 mb-2">
+                            <button class="btn btn-outline btn-sm btn-block" onclick="AdminUsers.levelModal(${u.id},'${u.active_package||'none'}')">📊 Level</button>
+                            <button class="btn btn-outline btn-sm btn-block" onclick="AdminUsers.addMoneyModal(${u.id})">💵 Add Money</button>
+                        </div>
+
                         <div class="flex gap-2">
                             ${u.status==='active' ? `
                                 <button class="btn btn-warning btn-block" onclick="AdminUsers.suspendUserModal(${u.id},'suspend')">⏸️ Suspend</button>
                                 <button class="btn btn-danger btn-block" onclick="AdminUsers.suspendUserModal(${u.id},'ban')">🚫 Ban</button>
                             ` : `<button class="btn btn-success btn-block" onclick="AdminUsers.activateUserModal(${u.id})">✅ Activate</button>`}
+                            <button class="btn btn-danger btn-block" onclick="AdminUsers.deleteUserModal(${u.id})">🗑️ Delete</button>
                         </div>
                     </div>
 
                     <!-- History Tab -->
                     <div id="tabHistory" style="display:none;">
-                        <h5 class="mb-2">📜 Activity & Suspension History</h5>
+                        <h5 class="mb-2">📜 Suspension & Warning History</h5>
                         ${u.suspensionHistory && u.suspensionHistory.length > 0 ? u.suspensionHistory.map(h => `
                             <div class="list-item" style="border-left:3px solid ${h.action==='ban'?'var(--color-danger)':h.action==='warning'?'var(--color-warning)':'var(--color-info)'}">
                                 <div class="list-item-icon">${h.action==='ban'?'🚫':h.action==='warning'?'⚡':'⏸️'}</div>
@@ -388,107 +214,225 @@ class AdminUsers {
                             </div>
                         `).join('') : '<p class="text-center text-secondary py-3">No withdrawals</p>'}
                     </div>
+
+                    <!-- Passwords Tab -->
+                    <div id="tabPasswords" style="display:none;">
+                        <h5 class="mb-2">🔑 Password History</h5>
+                        <div class="bank-info-card mb-3">
+                            <div class="bank-info-row"><span class="bank-info-label">Current Hash</span><span class="bank-info-value text-xs" style="word-break:break-all;">${u.password_hash ? u.password_hash.substring(0, 20) + '...' : 'N/A'}</span></div>
+                        </div>
+                        ${u.passwordHistory && u.passwordHistory.length > 0 ? u.passwordHistory.map(ph => `
+                            <div class="list-item">
+                                <div class="list-item-icon">🔑</div>
+                                <div class="list-item-content">
+                                    <div class="list-item-title">Password Changed</div>
+                                    <div class="list-item-subtitle">Hash: ${ph.password_hash.substring(0, 15)}... | By: ${ph.admin_name||'System'} | ${new Date(ph.changed_at).toLocaleString()}</div>
+                                </div>
+                            </div>
+                        `).join('') : '<p class="text-center text-secondary py-3">No password history</p>'}
+                    </div>
                 </div>
             `;
-            
+
             overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
             document.body.appendChild(overlay);
+
+            // Tab switching
+            document.getElementById('tabBtnInfo').addEventListener('click', () => AdminUsers.switchTab('Info'));
+            document.getElementById('tabBtnHistory').addEventListener('click', () => AdminUsers.switchTab('History'));
+            document.getElementById('tabBtnFinance').addEventListener('click', () => AdminUsers.switchTab('Finance'));
+            document.getElementById('tabBtnPasswords').addEventListener('click', () => AdminUsers.switchTab('Passwords'));
+
         } catch (error) {
             await Dialog.alert('Failed to load user details', 'Error', 'error');
         }
     }
 
-// Add these helper methods to the AdminUsers class:
-static async editUserModal(id, phone, name) {
-    const newName = await Dialog.prompt('Edit Full Name', 'Enter full name', name);
-    if (newName === null) return;
-    const newPhone = await Dialog.prompt('Edit Phone Number', 'Enter phone number', phone);
-    if (newPhone === null) return;
-    const confirmed = await Dialog.confirm('Save changes?', 'Update User', '💾 Save', 'Cancel');
-    if (!confirmed) return;
-    const token = localStorage.getItem('admin_token');
-    const apiUrl = APP_CONFIG.apiUrl;
-    await fetch(`${apiUrl}/admin/users/${id}`, {
-        method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ fullName: newName, phone: newPhone })
-    });
-    document.querySelector('.modal-overlay')?.remove();
-    router.navigate('/admin/users');
-}
+    static switchTab(name) {
+        ['Info', 'History', 'Finance', 'Passwords'].forEach(t => {
+            const tab = document.getElementById(`tab${t}`);
+            const btn = document.getElementById(`tabBtn${t}`);
+            if (tab) tab.style.display = t === name ? 'block' : 'none';
+            if (btn) btn.classList.toggle('active', t === name);
+        });
+    }
 
-static async notifyUserModal(id) {
-    const title = await Dialog.prompt('Notification Title', 'Enter title...');
-    if (!title) return;
-    const message = await Dialog.prompt('Notification Message', 'Enter message...');
-    if (!message) return;
-    const token = localStorage.getItem('admin_token');
-    const apiUrl = APP_CONFIG.apiUrl;
-    await fetch(`${apiUrl}/admin/users/${id}/notify`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ title, message })
-    });
-    await Dialog.alert('Notification sent!', 'Sent', 'success');
-}
+    // ============ MODAL METHODS ============
 
-static async alertUserModal(id) {
-    const title = await Dialog.prompt('Alert Title', 'Enter alert title...');
-    if (!title) return;
-    const message = await Dialog.prompt('Alert Message', 'Enter alert message...');
-    if (!message) return;
-    const token = localStorage.getItem('admin_token');
-    const apiUrl = APP_CONFIG.apiUrl;
-    await fetch(`${apiUrl}/admin/users/${id}/alert`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ customTitle: title, customMessage: message })
-    });
-    await Dialog.alert('Alert sent!', 'Sent', 'success');
-}
+    static async editUserModal(id, phone, name) {
+        const newName = await Dialog.prompt('Edit Full Name', 'Enter full name', name);
+        if (newName === null) return;
+        const newPhone = await Dialog.prompt('Edit Phone Number', 'Enter phone number', phone);
+        if (newPhone === null) return;
+        const newPass = await Dialog.prompt('New Password (leave blank to keep)', 'Enter new password');
+        
+        const confirmed = await Dialog.confirm('Save changes?', 'Update User', '💾 Save', 'Cancel');
+        if (!confirmed) return;
 
-static async warnUserModal(id) {
-    const reason = await Dialog.prompt('Warning Reason', 'Enter reason for warning...');
-    if (!reason) return;
-    const confirmed = await Dialog.confirm('Send warning to this user? It will appear on their dashboard.', 'Confirm Warning', '⚠️ Send Warning', 'Cancel', 'warning');
-    if (!confirmed) return;
-    const token = localStorage.getItem('admin_token');
-    const apiUrl = APP_CONFIG.apiUrl;
-    await fetch(`${apiUrl}/admin/users/${id}/warn`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ reason })
-    });
-    await Dialog.alert('Warning sent! User will see it on their dashboard.', 'Warning Sent', 'warning');
-    document.querySelector('.modal-overlay')?.remove();
-    router.navigate('/admin/users');
-}
+        const body = {};
+        if (newName !== name) body.fullName = newName;
+        if (newPhone !== phone) body.phone = newPhone;
+        if (newPass && newPass.trim()) body.password = newPass;
+        if (Object.keys(body).length === 0) return;
 
-static async suspendUserModal(id, action) {
-    const confirmed = await Dialog.confirm(
-        action === 'ban' ? 'Ban this user permanently?' : 'Suspend this user?',
-        action === 'ban' ? 'Ban User' : 'Suspend User',
-        action === 'ban' ? '🚫 Ban' : '⏸️ Suspend', 'Cancel',
-        action === 'ban' ? 'danger' : 'warning'
-    );
-    if (!confirmed) return;
-    const token = localStorage.getItem('admin_token');
-    const apiUrl = APP_CONFIG.apiUrl;
-    await fetch(`${apiUrl}/admin/users/${id}/suspend`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ action, reason: 'Admin action' })
-    });
-    document.querySelector('.modal-overlay')?.remove();
-    router.navigate('/admin/users');
-}
+        const token = localStorage.getItem('admin_token');
+        const apiUrl = APP_CONFIG.apiUrl;
+        try {
+            const res = await fetch(`${apiUrl}/admin/users/${id}`, {
+                method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify(body)
+            });
+            const data = await res.json();
+            if (data.success) {
+                await Dialog.alert('User updated successfully!', 'Updated', 'success');
+                document.querySelector('.modal-overlay')?.remove();
+                router.navigate('/admin/users');
+            } else { await Dialog.alert(data.message, 'Error', 'error'); }
+        } catch (error) { await Dialog.alert('Failed to update user', 'Error', 'error'); }
+    }
 
-static async activateUserModal(id) {
-    const confirmed = await Dialog.confirm('Activate this user?', 'Activate User', '✅ Activate', 'Cancel');
-    if (!confirmed) return;
-    const token = localStorage.getItem('admin_token');
-    const apiUrl = APP_CONFIG.apiUrl;
-    await fetch(`${apiUrl}/admin/users/${id}/activate`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }
-    });
-    document.querySelector('.modal-overlay')?.remove();
-    router.navigate('/admin/users');
-}
+    static async notifyUserModal(id) {
+        const title = await Dialog.prompt('Notification Title', 'Enter title...');
+        if (!title) return;
+        const message = await Dialog.prompt('Notification Message', 'Enter message...');
+        if (!message) return;
+        const token = localStorage.getItem('admin_token');
+        const apiUrl = APP_CONFIG.apiUrl;
+        await fetch(`${apiUrl}/admin/users/${id}/notify`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ title, message })
+        });
+        await Dialog.alert('Notification sent!', 'Sent', 'success');
+    }
+
+    static async alertUserModal(id) {
+        const title = await Dialog.prompt('Alert Title', 'Enter alert title...');
+        if (!title) return;
+        const message = await Dialog.prompt('Alert Message', 'Enter alert message...');
+        if (!message) return;
+        const token = localStorage.getItem('admin_token');
+        const apiUrl = APP_CONFIG.apiUrl;
+        await fetch(`${apiUrl}/admin/users/${id}/alert`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ customTitle: title, customMessage: message })
+        });
+        await Dialog.alert('Alert sent!', 'Sent', 'success');
+    }
+
+    static async warnUserModal(id) {
+        const reason = await Dialog.prompt('Warning Reason', 'Enter reason for warning...');
+        if (!reason) return;
+        const confirmed = await Dialog.confirm('Send warning? It will appear on their dashboard.', 'Confirm Warning', '⚠️ Send', 'Cancel', 'warning');
+        if (!confirmed) return;
+        const token = localStorage.getItem('admin_token');
+        const apiUrl = APP_CONFIG.apiUrl;
+        await fetch(`${apiUrl}/admin/users/${id}/warn`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ reason })
+        });
+        await Dialog.alert('Warning sent!', 'Warning Sent', 'warning');
+        document.querySelector('.modal-overlay')?.remove();
+        router.navigate('/admin/users');
+    }
+
+    static async suspendUserModal(id, action) {
+        const confirmed = await Dialog.confirm(
+            action === 'ban' ? 'Ban permanently?' : 'Suspend this user?',
+            action === 'ban' ? 'Ban User' : 'Suspend User',
+            action === 'ban' ? '🚫 Ban' : '⏸️ Suspend', 'Cancel',
+            action === 'ban' ? 'danger' : 'warning'
+        );
+        if (!confirmed) return;
+        const token = localStorage.getItem('admin_token');
+        const apiUrl = APP_CONFIG.apiUrl;
+        await fetch(`${apiUrl}/admin/users/${id}/suspend`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ action, reason: 'Admin action' })
+        });
+        document.querySelector('.modal-overlay')?.remove();
+        router.navigate('/admin/users');
+    }
+
+    static async activateUserModal(id) {
+        const confirmed = await Dialog.confirm('Activate this user?', 'Activate User', '✅ Activate', 'Cancel');
+        if (!confirmed) return;
+        const token = localStorage.getItem('admin_token');
+        const apiUrl = APP_CONFIG.apiUrl;
+        await fetch(`${apiUrl}/admin/users/${id}/activate`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }
+        });
+        document.querySelector('.modal-overlay')?.remove();
+        router.navigate('/admin/users');
+    }
+
+    static async deleteUserModal(id) {
+        const confirmed = await Dialog.confirm(
+            'Delete this user permanently? Their phone will be saved for registration tracking.',
+            'Delete User',
+            '🗑️ Delete',
+            'Cancel',
+            'danger'
+        );
+        if (!confirmed) return;
+        const token = localStorage.getItem('admin_token');
+        const apiUrl = APP_CONFIG.apiUrl;
+        await fetch(`${apiUrl}/admin/users/${id}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        document.querySelector('.modal-overlay')?.remove();
+        router.navigate('/admin/users');
+    }
+
+    static async levelModal(id, currentPackage) {
+        const packages = ['none', 'Intern', 'D1', 'D2', 'D3', 'D4', 'D5', 'D6', 'D7', 'D8'];
+        let options = packages.map(p => `<option value="${p}" ${p === currentPackage ? 'selected' : ''}>${p === 'none' ? 'No Package' : p}</option>`).join('');
+        
+        const overlay = document.createElement('div');
+        overlay.className = 'modal-overlay';
+        overlay.innerHTML = `
+            <div class="modal animate-scaleIn" style="max-width:380px;text-align:center;">
+                <h4 class="mb-3">📊 Change Package</h4>
+                <select class="form-select mb-3" id="levelSelect">${options}</select>
+                <div class="flex gap-2">
+                    <button class="btn btn-outline btn-block" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
+                    <button class="btn btn-primary btn-block" id="confirmLevel">Change</button>
+                </div>
+            </div>
+        `;
+        overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+        document.body.appendChild(overlay);
+
+        document.getElementById('confirmLevel').addEventListener('click', async () => {
+            const pkg = document.getElementById('levelSelect').value;
+            const token = localStorage.getItem('admin_token');
+            const apiUrl = APP_CONFIG.apiUrl;
+            await fetch(`${apiUrl}/admin/users/${id}/level`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({ packageName: pkg })
+            });
+            overlay.remove();
+            document.querySelector('.modal-overlay')?.remove();
+            router.navigate('/admin/users');
+        });
+    }
+
+    static async addMoneyModal(id) {
+        const amount = await Dialog.prompt('Amount (ETB)', 'Enter amount to add to earnings...');
+        if (!amount) return;
+        const reason = await Dialog.prompt('Reason', 'Enter reason for bonus...');
+        const confirmed = await Dialog.confirm(`Add ${Number(amount).toLocaleString()} ETB to user earnings?`, 'Add Money', '💵 Add', 'Cancel');
+        if (!confirmed) return;
+        const token = localStorage.getItem('admin_token');
+        const apiUrl = APP_CONFIG.apiUrl;
+        await fetch(`${apiUrl}/admin/users/${id}/add-money`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ amount: parseFloat(amount), reason })
+        });
+        await Dialog.alert(`${Number(amount).toLocaleString()} ETB added to user earnings!`, 'Money Added', 'success');
+        document.querySelector('.modal-overlay')?.remove();
+        router.navigate('/admin/users');
+    }
 
     unmount() {}
 }
