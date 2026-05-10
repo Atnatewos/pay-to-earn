@@ -1,6 +1,6 @@
 {
     "schedule": {
-        "enabled": false,
+        "enabled": true,
         "days": ["monday", "tuesday", "wednesday", "thursday", "friday"],
         "hoursStart": "00:00",
         "hoursEnd": "23:59",

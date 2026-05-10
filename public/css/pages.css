@@ -994,3 +994,45 @@
 .template-card:active {
     transform: scale(0.96);
 }
+
+.rest-day-alert {
+    background: var(--color-surface);
+    border: 2px solid var(--color-warning);
+    border-radius: var(--radius-2xl);
+    padding: 40px 24px;
+    text-align: center;
+    margin-top: 20px;
+    box-shadow: var(--shadow-lg);
+}
+.rest-day-icon {
+    font-size: 80px;
+    margin-bottom: 16px;
+    animation: float 3s ease-in-out infinite;
+}
+.rest-day-alert h2 {
+    font-size: var(--font-3xl);
+    font-weight: 800;
+    margin-bottom: 12px;
+}
+.rest-day-alert p {
+    color: var(--color-text-secondary);
+    font-size: var(--font-base);
+    line-height: 1.6;
+    margin-bottom: 16px;
+}
+.schedule-info {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--color-warning-bg);
+    border: 1px solid var(--color-warning);
+    border-radius: var(--radius-lg);
+    padding: 10px 16px;
+    font-size: var(--font-sm);
+    margin-bottom: 20px;
+}
+.rest-day-hint {
+    font-size: var(--font-sm);
+    color: var(--color-text-muted);
+    font-style: italic;
+}

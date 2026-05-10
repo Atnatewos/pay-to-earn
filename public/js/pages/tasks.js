@@ -26,20 +26,28 @@ class TasksPage {
 
     async loadTaskPage() {
         try {
-            const [task, earnings] = await Promise.all([
+            const [task, earnings, scheduleData] = await Promise.all([
                 API.get('/tasks/today'),
-                API.get('/tasks/earnings')
+                API.get('/tasks/earnings'),
+                fetch(`${APP_CONFIG.apiUrl}/config/tasks-schedule`).then(r => r.json()).catch(() => null)
             ]);
 
             const t = task.data;
             const e = earnings.data;
+            const schedule = scheduleData?.data || {};
 
-            if (t.is_completed) {
-                this.renderCompletedState(t, e);
+            // CHECK FOR REST DAY - Show popup alert
+            if (t.is_rest_day) {
+                this.renderRestDay(t, e, schedule);
                 return;
             }
 
-            this.renderTaskReady(t, e);
+            if (t.is_completed) {
+                this.renderCompletedState(t, e, schedule);
+                return;
+            }
+
+            this.renderTaskReady(t, e, schedule);
         } catch (error) {
             document.getElementById('taskContent').innerHTML = `
                 <div class="empty-state">
@@ -54,7 +62,25 @@ class TasksPage {
         }
     }
 
-    renderTaskReady(t, e) {
+    renderRestDay(t, e, schedule) {
+        document.getElementById('taskContent').innerHTML = `
+            <div class="rest-day-alert animate-scaleIn">
+                <div class="rest-day-icon">😴</div>
+                <h2>Rest Day!</h2>
+                <p>${t.message || 'Tasks are not available today.'}</p>
+                <div class="schedule-info">
+                    <span>📅</span>
+                    <span>${schedule.description || t.schedule_description || 'Check schedule for available days'}</span>
+                </div>
+                <p class="rest-day-hint">Share your referral link and earn while you rest!</p>
+                <button class="btn btn-primary btn-lg" onclick="router.navigate('/team')">
+                    👥 Invite Friends & Earn
+                </button>
+            </div>
+        `;
+    }
+
+    renderTaskReady(t, e, schedule) {
         const progress = t.tasks_allocated > 0 
             ? (t.tasks_completed / t.tasks_allocated) * 100 
             : 0;
@@ -98,21 +124,23 @@ class TasksPage {
                 </div>
             </div>
 
-            <!-- Info Card -->
+            <!-- Info Card with Schedule -->
             <div class="card">
                 <h4 class="mb-3">📋 How it works</h4>
                 <div class="text-sm text-secondary">
-                    <p class="mb-2">1️⃣ Click "Start Task"</p>
-                    <p class="mb-2">2️⃣ Solve the captcha challenge</p>
-                    <p class="mb-2">3️⃣ Watch a short video</p>
-                    <p class="mb-2">4️⃣ Confirm with another captcha</p>
-                    <p>✅ Earn ETB instantly!</p>
+                    ${(schedule.instructions || ['Click "Start Task"', 'Solve the captcha challenge', 'Watch a short video', 'Confirm with another captcha', 'Earn ETB instantly!']).map((inst, i) => `<p class="mb-2">${i+1}️⃣ ${inst}</p>`).join('')}
                 </div>
+                ${schedule.description ? `
+                    <div class="schedule-info mt-3" style="margin:12px 0 0 0;">
+                        <span>📅</span>
+                        <span>${schedule.description}</span>
+                    </div>
+                ` : ''}
             </div>
         `;
     }
 
-    renderCompletedState(t, e) {
+    renderCompletedState(t, e, schedule) {
         document.getElementById('taskContent').innerHTML = `
             <div class="card card-gradient text-center p-8 mb-4">
                 <div class="text-6xl mb-4">🎉</div>
@@ -130,7 +158,12 @@ class TasksPage {
                     </div>
                 </div>
 
-                <p class="text-sm text-secondary">Come back tomorrow at 00:01 for new tasks!</p>
+                ${schedule.description ? `
+                    <div class="schedule-info">
+                        <span>📅</span>
+                        <span>${schedule.description}</span>
+                    </div>
+                ` : '<p class="text-sm text-secondary">Come back tomorrow for new tasks!</p>'}
             </div>
         `;
     }
@@ -143,7 +176,6 @@ class TasksPage {
         const captchaArea = document.getElementById('captchaArea');
         
         try {
-            // Step 1: Generate first captcha
             captchaArea.innerHTML = `
                 <div class="text-center">
                     <div class="step-indicator mb-4">
@@ -160,12 +192,10 @@ class TasksPage {
 
             const captcha1 = await API.post('/captcha/generate', { taskNumber: 1 });
             instance.currentCaptcha = captcha1.data;
-
-            // Step 2: Show first captcha
             instance.renderCaptcha(captcha1.data, 'captcha1');
 
         } catch (error) {
-            Toast.show(error.message, 'error');
+            Dialog.alert(error.message, 'Cannot Start Task', 'warning');
             instance.isProcessing = false;
             instance.render();
         }
@@ -212,20 +242,14 @@ class TasksPage {
 
                 <div class="captcha-display mb-4">
                     <div class="text-xs text-secondary mb-2">${stepTitle}</div>
-                    <div class="captcha-question">
-                        ${captcha.question}
-                    </div>
+                    <div class="captcha-question">${captcha.question}</div>
                 </div>
 
                 ${inputHtml}
-
-                <p class="text-xs text-muted text-center mt-3">
-                    Expires in 5 minutes
-                </p>
+                <p class="text-xs text-muted text-center mt-3">Expires in 5 minutes</p>
             </div>
         `;
 
-        // Focus input if it exists
         setTimeout(() => {
             const input = document.getElementById(`captchaInput_${step}`);
             if (input) input.focus();
@@ -244,8 +268,6 @@ class TasksPage {
         
         try {
             const captchaArea = document.getElementById('captchaArea');
-            
-            // Show verifying state
             captchaArea.innerHTML = `
                 <div class="text-center">
                     <div class="loader mb-3"><div class="spinner"></div></div>
@@ -253,20 +275,16 @@ class TasksPage {
                 </div>
             `;
 
-            // Verify captcha
             const verifyResult = await API.post('/captcha/verify', { captchaId, answer });
 
             if (step === 'captcha1') {
-                // Captcha 1 correct → Show ad
                 instance.showAd(verifyResult.data);
             } else {
-                // Captcha 2 correct → Task complete
                 instance.showTaskComplete(verifyResult.data);
             }
 
         } catch (error) {
-            Toast.show(error.message || 'Incorrect answer. Try again.', 'error');
-            // Reload captcha
+            Dialog.alert(error.message || 'Incorrect answer. Try again.', 'Verification Failed', 'warning');
             const newCaptcha = await API.post('/captcha/generate', { taskNumber: 1 });
             instance.renderCaptcha(newCaptcha.data, 'captcha1');
         }
@@ -296,31 +314,25 @@ class TasksPage {
                         <div class="progress-bar mb-3">
                             <div id="adProgress" class="progress-fill" style="width:0%"></div>
                         </div>
-                        <p class="text-xs text-muted">
-                            Rewards support our platform
-                        </p>
+                        <p class="text-xs text-muted">Rewards support our platform</p>
                     </div>
                 </div>
             </div>
         `;
 
-        // Countdown timer
         const timer = setInterval(async () => {
             secondsLeft--;
             const timerEl = document.getElementById('adTimer');
             const progressEl = document.getElementById('adProgress');
-            
             if (timerEl) timerEl.textContent = secondsLeft;
             if (progressEl) progressEl.style.width = `${((15 - secondsLeft) / 15) * 100}%`;
-            
             if (secondsLeft <= 0) {
                 clearInterval(timer);
-                // Show second captcha
                 try {
                     const captcha2 = await API.post('/captcha/generate', { taskNumber: 2 });
                     this.renderCaptcha(captcha2.data, 'captcha2');
                 } catch (error) {
-                    Toast.show('Failed to generate captcha', 'error');
+                    Dialog.alert('Failed to generate captcha', 'Error', 'error');
                 }
             }
         }, 1000);
@@ -387,7 +399,7 @@ class TasksPage {
                             <div class="list-item-subtitle">${new Date(log.completed_at).toLocaleString()}</div>
                         </div>
                         <div class="list-item-trailing">
-                            <span class="text-success font-medium">+${this.formatETB(log.earned)} ETB</span>
+                            <span class="text-success font-medium">+${TasksPage.formatETB(log.earned)} ETB</span>
                         </div>
                     </div>
                 `).join('')
@@ -396,21 +408,16 @@ class TasksPage {
     }
 
     formatETB(amount) {
-        return Number(amount || 0).toLocaleString('en-US', {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2
-        }).replace(/,/g, ',');
+        const num = Number(amount || 0);
+        if (!isFinite(num) || num > 999999999 || num < 0) return '0.00';
+        return num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
 
-    unmount() {
-        this.isProcessing = false;
-    }
+    unmount() { this.isProcessing = false; }
 }
 
-// Make formatETB static too
 TasksPage.formatETB = function(amount) {
-    return Number(amount || 0).toLocaleString('en-US', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-    });
+    const num = Number(amount || 0);
+    if (!isFinite(num) || num > 999999999 || num < 0) return '0.00';
+    return num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 };

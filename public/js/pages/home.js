@@ -5,7 +5,7 @@ class HomePage {
     }
 
     async render() {
-        Navbar.render('Earn', false, [
+        Navbar.render(APP_CONFIG.name, false, [
             { icon: '🔔', title: 'Notifications', onclick: 'NotificationBell.showNotifications()' }
         ]);
         BottomNav.render('/home');
@@ -88,9 +88,7 @@ class HomePage {
                     alertsContainer.appendChild(alertEl);
                 });
             }
-        } catch (error) {
-            // silently fail
-        }
+        } catch (error) {}
     }
 
     async loadData() {
@@ -108,7 +106,6 @@ class HomePage {
             document.getElementById('homeContent').innerHTML = `
                 <div class="balance-hero animate-fadeInUp">
                     <div class="balance-hero-label">Total Balance</div>
-                    
                     <div class="balance-hero-amount">${this.formatETB(user.balance)} ETB</div>
                     <div style="display:flex;gap:10px;margin-top:10px;">
                         <div style="flex:1;background:rgba(255,255,255,0.2);padding:8px 12px;border-radius:10px;">
@@ -240,51 +237,30 @@ class HomePage {
     static calculateDaysRemaining() {
         const expiryEl = document.querySelector('[data-expiry]');
         if (!expiryEl) return;
-        
         const expiryDate = new Date(expiryEl.dataset.expiry);
         const now = new Date();
-        const diffTime = expiryDate - now;
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        
+        const diffDays = Math.ceil((expiryDate - now) / (1000 * 60 * 60 * 24));
         const daysEl = document.getElementById('daysRemaining');
         const progressEl = document.getElementById('expiryProgress');
-        
         if (daysEl) {
-            if (diffDays > 30) {
-                daysEl.textContent = '30+ days remaining';
-            } else if (diffDays > 0) {
-                daysEl.textContent = `${diffDays} day${diffDays > 1 ? 's' : ''} remaining`;
-            } else if (diffDays === 0) {
-                daysEl.textContent = '⚠️ Expires today!';
-            } else {
-                daysEl.textContent = '❌ Expired';
-            }
+            if (diffDays > 30) daysEl.textContent = '30+ days remaining';
+            else if (diffDays > 0) daysEl.textContent = `${diffDays} day${diffDays > 1 ? 's' : ''} remaining`;
+            else if (diffDays === 0) daysEl.textContent = '⚠️ Expires today!';
+            else daysEl.textContent = '❌ Expired';
         }
-        
         if (progressEl) {
-            const totalDays = 30;
-            const percentLeft = Math.max(0, Math.min(100, (diffDays / totalDays) * 100));
+            const percentLeft = Math.max(0, Math.min(100, (diffDays / 30) * 100));
             progressEl.style.width = `${percentLeft}%`;
-            
-            if (diffDays <= 1) {
-                progressEl.style.background = '#EF4444';
-            } else if (diffDays <= 5) {
-                progressEl.style.background = '#F59E0B';
-            } else {
-                progressEl.style.background = 'rgba(255,255,255,0.8)';
-            }
+            if (diffDays <= 1) progressEl.style.background = '#EF4444';
+            else if (diffDays <= 5) progressEl.style.background = '#F59E0B';
+            else progressEl.style.background = 'rgba(255,255,255,0.8)';
         }
     }
 
     formatETB(amount) {
         const num = Number(amount || 0);
-        if (!isFinite(num) || num > 999999999 || num < 0) {
-            return '0.00';
-        }
-        return num.toLocaleString('en-US', {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2
-        });
+        if (!isFinite(num) || num > 999999999 || num < 0) return '0.00';
+        return num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
 
     unmount() {}
