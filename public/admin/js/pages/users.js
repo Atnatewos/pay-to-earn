@@ -393,16 +393,57 @@ class AdminUsers {
     }
 
     static async levelModal(id, currentPackage) {
-        const packages = ['none', 'Intern', 'D1', 'D2', 'D3', 'D4', 'D5', 'D6', 'D7', 'D8'];
-        let options = packages.map(p => `<option value="${p}" ${p===currentPackage?'selected':''}>${p==='none'?'No Package':p}</option>`).join('');
-        const overlay = document.createElement('div'); overlay.className = 'modal-overlay';
-        overlay.innerHTML = `<div class="modal animate-scaleIn" style="max-width:380px;text-align:center;"><h4 class="mb-3">📊 Change Package</h4><select class="form-select mb-3" id="levelSelect">${options}</select><div class="flex gap-2"><button class="btn btn-outline btn-block" onclick="this.closest('.modal-overlay').remove()">Cancel</button><button class="btn btn-primary btn-block" id="confirmLevel">Change</button></div></div>`;
-        overlay.addEventListener('click', e => { if (e.target===overlay) overlay.remove(); }); document.body.appendChild(overlay);
+        const apiUrl = APP_CONFIG.apiUrl;
+        const token = localStorage.getItem('admin_token');
+        
+        // Fetch packages from API (which reads from config)
+        let packages = [{ name: 'No Package', value: 'none' }];
+        try {
+            const response = await fetch(`${apiUrl}/packages`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const result = await response.json();
+            if (result.success && result.data && result.data.length > 0) {
+                packages = [
+                    { name: 'No Package', value: 'none' },
+                    ...result.data.map(p => ({ name: p.name, value: p.name }))
+                ];
+            }
+        } catch (e) {
+            // API failed - show empty, admin can retry
+            await Dialog.alert('Failed to load packages. Please try again.', 'Error', 'error');
+            return;
+        }
+        
+        let options = packages.map(p => 
+            `<option value="${p.value}" ${p.value === currentPackage ? 'selected' : ''}>${p.name}</option>`
+        ).join('');
+        
+        const overlay = document.createElement('div');
+        overlay.className = 'modal-overlay';
+        overlay.innerHTML = `
+            <div class="modal animate-scaleIn" style="max-width:380px;text-align:center;">
+                <h4 class="mb-3">📊 Change Package</h4>
+                <select class="form-select mb-3" id="levelSelect">${options}</select>
+                <div class="flex gap-2">
+                    <button class="btn btn-outline btn-block" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
+                    <button class="btn btn-primary btn-block" id="confirmLevel">Change</button>
+                </div>
+            </div>
+        `;
+        overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+        document.body.appendChild(overlay);
+        
         document.getElementById('confirmLevel').addEventListener('click', async () => {
-            const pkg = document.getElementById('levelSelect').value;
-            const token = localStorage.getItem('admin_token'); const apiUrl = APP_CONFIG.apiUrl;
-            await fetch(`${apiUrl}/admin/users/${id}/level`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ packageName: pkg }) });
-            overlay.remove(); document.querySelector('.modal-overlay')?.remove(); router.navigate('/admin/users');
+            const pkgName = document.getElementById('levelSelect').value;
+            await fetch(`${apiUrl}/admin/users/${id}/level`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({ packageName: pkgName })
+            });
+            overlay.remove();
+            document.querySelector('.modal-overlay')?.remove();
+            router.navigate('/admin/users');
         });
     }
 

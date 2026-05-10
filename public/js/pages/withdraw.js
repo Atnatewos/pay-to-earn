@@ -85,7 +85,7 @@ class WithdrawPage {
                         const body = { amount, bankAccountId, password: password.trim(), fullName: user.full_name || '', phoneNumber: user.phone || '' };
                         await API.post('/withdrawals', body);
                         SuccessModal.show('Withdrawal Requested! 🎉', 'Processing within 24-48 hours.', [{ label: 'Amount', value: `${amount.toLocaleString()} ETB` }, { label: 'Status', value: '⏳ Pending' }], 'Done', () => this.loadForm());
-                    } catch (error) { Toast.show(error.message, 'error'); }
+                    } catch (error) {  }
                 });
             }
         } catch (error) {

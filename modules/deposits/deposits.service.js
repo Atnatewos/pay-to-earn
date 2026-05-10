@@ -2,10 +2,10 @@
 const pool = require('../../config/db');
 const NotificationsService = require('../notifications/notifications.service');
 const MoneyService = require('../money/money.service');
+const PackagesService = require('../packages/packages.service');
 
 // ============ CONFIG FILES ============
 const depositConfig = require('../../config/deposit.json');
-const packageConfig = require('../../config/packages.json');
 const commissionConfig = require('../../config/commissions.json');
 
 class DepositsService {
@@ -35,11 +35,9 @@ class DepositsService {
     }
 
     async createDeposit(userId, amount, bankName, transactionId) {
-        // Check schedule
         const scheduleCheck = this.checkSchedule();
         if (!scheduleCheck.allowed) throw new Error(scheduleCheck.message);
 
-        // Validate amount from config
         const min = depositConfig.minAmount || 1600;
         const max = depositConfig.maxAmount || 330000;
         if (amount < min || amount > max) {
@@ -80,30 +78,12 @@ class DepositsService {
                 depositId
             );
 
-            // Find matching package from config
-            let packageName = null;
-            for (const [name, pkg] of Object.entries(packageConfig)) {
-                if (pkg.deposit === deposit.amount) {
-                    packageName = name;
-                    break;
-                }
-            }
+            // Find matching package from config via PackagesService (NO DATABASE FALLBACK)
+            const matchedPackage = PackagesService.getPackageByDeposit(deposit.amount);
 
-            // Fallback: try database
-            if (!packageName) {
-                const packageResult = await client.query(
-                    'SELECT name FROM packages WHERE deposit_amount = $1 AND is_active = TRUE',
-                    [deposit.amount]
-                );
-                if (packageResult.rows.length > 0) {
-                    packageName = packageResult.rows[0].name;
-                }
-            }
-
-            // Activate package if found
-            if (packageName && packageName !== 'Intern') {
-                const pkg = packageConfig[packageName];
-                const durationDays = pkg ? pkg.durationDays : 30;
+            if (matchedPackage && matchedPackage.key !== 'Intern') {
+                const packageName = matchedPackage.name || matchedPackage.key;
+                const durationDays = matchedPackage.durationDays || 30;
 
                 await client.query(
                     'UPDATE user_packages SET is_active = FALSE WHERE user_id = $1 AND is_active = TRUE',
@@ -146,7 +126,6 @@ class DepositsService {
             [userId]
         );
 
-        // Read commission rates from config
         const rates = [
             commissionConfig.referral.level1.rate,
             commissionConfig.referral.level2.rate,

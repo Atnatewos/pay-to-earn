@@ -49,6 +49,13 @@ class TasksPage {
 
             this.renderTaskReady(t, e, schedule);
         } catch (error) {
+            // Show error as a popup alert instead of empty state
+            Dialog.alert(
+                error.message || 'Unable to load tasks. Please try again.',
+                'Error',
+                'error'
+            );
+            
             document.getElementById('taskContent').innerHTML = `
                 <div class="empty-state">
                     <div class="empty-state-icon">⚠️</div>
@@ -86,7 +93,6 @@ class TasksPage {
             : 0;
 
         document.getElementById('taskContent').innerHTML = `
-            <!-- Progress Header -->
             <div class="card card-gradient text-center mb-4">
                 <div class="text-sm text-secondary mb-2">Task Progress</div>
                 <div class="task-progress mb-3">
@@ -98,7 +104,6 @@ class TasksPage {
                     <span>${t.tasks_completed} / ${t.tasks_allocated} Tasks</span>
                     <span class="text-success">${this.formatETB(t.earned)} ETB Earned</span>
                 </div>
-
                 <div class="flex justify-around text-center">
                     <div>
                         <div class="text-xs text-secondary">Today's Earnings</div>
@@ -111,20 +116,17 @@ class TasksPage {
                 </div>
             </div>
 
-            <!-- Captcha Area -->
             <div id="captchaArea" class="card mb-4">
                 <div class="text-center">
                     <div class="text-4xl mb-3">🔐</div>
                     <h4 class="mb-2">Task #${t.tasks_completed + 1}</h4>
                     <p class="text-sm text-secondary mb-4">Click below to start this task</p>
-                    
                     <button id="startTaskBtn" class="btn btn-primary btn-lg" onclick="TasksPage.startTaskFlow()">
                         ▶ Start Task
                     </button>
                 </div>
             </div>
 
-            <!-- Info Card with Schedule -->
             <div class="card">
                 <h4 class="mb-3">📋 How it works</h4>
                 <div class="text-sm text-secondary">
@@ -146,7 +148,6 @@ class TasksPage {
                 <div class="text-6xl mb-4">🎉</div>
                 <h3 class="mb-2">All Tasks Complete!</h3>
                 <p class="text-secondary mb-4">You've completed all ${t.tasks_allocated} tasks today</p>
-                
                 <div class="stats-grid mb-4">
                     <div class="card p-3">
                         <div class="text-xs text-secondary">Today's Earnings</div>
@@ -157,7 +158,6 @@ class TasksPage {
                         <div class="text-xl font-bold">${this.formatETB(e.balance)} ETB</div>
                     </div>
                 </div>
-
                 ${schedule.description ? `
                     <div class="schedule-info">
                         <span>📅</span>
@@ -174,6 +174,7 @@ class TasksPage {
         instance.isProcessing = true;
 
         const captchaArea = document.getElementById('captchaArea');
+        if (!captchaArea) return;
         
         try {
             captchaArea.innerHTML = `
@@ -203,6 +204,8 @@ class TasksPage {
 
     renderCaptcha(captcha, step) {
         const captchaArea = document.getElementById('captchaArea');
+        if (!captchaArea) return;
+        
         const stepNum = step === 'captcha1' ? '1' : '3';
         const stepTitle = step === 'captcha1' ? 'Solve Captcha' : 'Confirm Captcha';
 
@@ -239,12 +242,10 @@ class TasksPage {
                     <span class="step-line ${stepNum >= '3' ? 'active' : ''}"></span>
                     <span class="step ${stepNum >= '3' ? 'active' : ''}">3</span>
                 </div>
-
                 <div class="captcha-display mb-4">
                     <div class="text-xs text-secondary mb-2">${stepTitle}</div>
                     <div class="captcha-question">${captcha.question}</div>
                 </div>
-
                 ${inputHtml}
                 <p class="text-xs text-muted text-center mt-3">Expires in 5 minutes</p>
             </div>
@@ -268,12 +269,14 @@ class TasksPage {
         
         try {
             const captchaArea = document.getElementById('captchaArea');
-            captchaArea.innerHTML = `
-                <div class="text-center">
-                    <div class="loader mb-3"><div class="spinner"></div></div>
-                    <p class="text-sm text-secondary">Verifying...</p>
-                </div>
-            `;
+            if (captchaArea) {
+                captchaArea.innerHTML = `
+                    <div class="text-center">
+                        <div class="loader mb-3"><div class="spinner"></div></div>
+                        <p class="text-sm text-secondary">Verifying...</p>
+                    </div>
+                `;
+            }
 
             const verifyResult = await API.post('/captcha/verify', { captchaId, answer });
 
@@ -285,13 +288,19 @@ class TasksPage {
 
         } catch (error) {
             Dialog.alert(error.message || 'Incorrect answer. Try again.', 'Verification Failed', 'warning');
-            const newCaptcha = await API.post('/captcha/generate', { taskNumber: 1 });
-            instance.renderCaptcha(newCaptcha.data, 'captcha1');
+            try {
+                const newCaptcha = await API.post('/captcha/generate', { taskNumber: 1 });
+                instance.renderCaptcha(newCaptcha.data, 'captcha1');
+            } catch (e) {
+                Dialog.alert('Failed to generate new captcha', 'Error', 'error');
+            }
         }
     }
 
     showAd(taskData) {
         const captchaArea = document.getElementById('captchaArea');
+        if (!captchaArea) return;
+        
         let secondsLeft = 15;
         
         captchaArea.innerHTML = `
@@ -303,7 +312,6 @@ class TasksPage {
                     <span class="step-line"></span>
                     <span class="step">3</span>
                 </div>
-
                 <div class="ad-container mb-4">
                     <div class="ad-placeholder">
                         <div class="text-6xl mb-3">📺</div>
@@ -340,6 +348,8 @@ class TasksPage {
 
     showTaskComplete(result) {
         const captchaArea = document.getElementById('captchaArea');
+        if (!captchaArea) return;
+        
         const instance = router.currentPage;
         instance.isProcessing = false;
         
@@ -352,7 +362,6 @@ class TasksPage {
                     <span class="step-line completed"></span>
                     <span class="step completed">✓</span>
                 </div>
-
                 <div class="text-6xl mb-3">✅</div>
                 <h4 class="mb-2">Task Complete!</h4>
                 <div class="text-3xl font-extrabold text-success mb-2">
@@ -361,7 +370,6 @@ class TasksPage {
                 <p class="text-sm text-secondary mb-4">
                     Tasks: ${result.tasksCompleted}/${result.tasksAllocated}
                 </p>
-
                 ${!result.isCompleted ? `
                     <button id="nextTaskBtn" class="btn btn-primary btn-lg" 
                             onclick="TasksPage.startTaskFlow()">

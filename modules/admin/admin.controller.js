@@ -387,24 +387,43 @@ class AdminController {
         try {
             const { packageName } = req.body;
             const userId = req.params.id;
+            
             const user = await pool.query('SELECT phone, full_name FROM users WHERE id = $1', [userId]);
             if (user.rows.length === 0) return res.json({ success: false, message: 'User not found' });
+            
             if (packageName === 'none') {
                 await pool.query('UPDATE users SET active_package = NULL, package_expiry = NULL WHERE id = $1', [userId]);
                 await pool.query('UPDATE user_packages SET is_active = FALSE WHERE user_id = $1', [userId]);
-                await pool.query('INSERT INTO user_alerts (user_id, title, message, type, icon, color, sent_by) VALUES ($1,$2,$3,$4,$5,$6,$7)', [userId, '📦 Package Removed', 'Your active package has been removed by admin.', 'info', '📦', 'color-info', req.admin.id]);
-                await NotificationsService.create(userId, 'Package Changed', 'Your package has been removed by admin.', 'system');
+                await pool.query('INSERT INTO user_alerts (user_id, title, message, type, icon, color, sent_by) VALUES ($1,$2,$3,$4,$5,$6,$7)', 
+                    [userId, '📦 Package Removed', 'Your active package has been removed by admin.', 'info', '📦', 'color-info', req.admin.id]);
                 return res.json({ success: true, message: 'Package removed' });
             }
-            const pkg = await pool.query('SELECT * FROM packages WHERE name = $1', [packageName]);
-            if (pkg.rows.length === 0) return res.json({ success: false, message: 'Invalid package' });
+            
+            // Get package from config
+            const PackagesService = require('../packages/packages.service');
+            const pkg = await PackagesService.getPackageByName(packageName);
+            if (!pkg) return res.json({ success: false, message: 'Invalid package' });
+            
+            const durationDays = pkg.duration_days || 30;
+            
             await pool.query('UPDATE user_packages SET is_active = FALSE WHERE user_id = $1', [userId]);
-            await pool.query("INSERT INTO user_packages (user_id, package_name, deposit_amount, started_at, expires_at) VALUES ($1,$2,$3,CURRENT_DATE,CURRENT_DATE + INTERVAL '30 days')", [userId, packageName, pkg.rows[0].deposit_amount]);
-            await pool.query("UPDATE users SET active_package = $1, package_expiry = CURRENT_DATE + INTERVAL '30 days' WHERE id = $2", [packageName, userId]);
-            await pool.query('INSERT INTO user_alerts (user_id, title, message, type, icon, color, sent_by) VALUES ($1,$2,$3,$4,$5,$6,$7)', [userId, '🎉 Level Changed!', `Your package has been changed to ${packageName} by admin.`, 'success', '🎊', 'gradient-accent', req.admin.id]);
-            await NotificationsService.create(userId, 'Package Changed', `Your package is now ${packageName}.`, 'system');
-            return res.json({ success: true, message: `Package changed to ${packageName}` });
-        } catch (error) { return res.json({ success: false, message: 'Failed to change package' }); }
+            await pool.query(
+                `INSERT INTO user_packages (user_id, package_name, deposit_amount, started_at, expires_at) VALUES ($1,$2,$3,CURRENT_DATE,CURRENT_DATE + INTERVAL '${durationDays} days')`,
+                [userId, pkg.name, pkg.deposit_amount]
+            );
+            await pool.query(
+                `UPDATE users SET active_package = $1, package_expiry = CURRENT_DATE + INTERVAL '${durationDays} days' WHERE id = $2`,
+                [pkg.name, userId]
+            );
+            
+            await pool.query('INSERT INTO user_alerts (user_id, title, message, type, icon, color, sent_by) VALUES ($1,$2,$3,$4,$5,$6,$7)',
+                [userId, '🎉 Level Changed!', `Your package has been changed to ${pkg.name} by admin.`, 'success', '🎊', 'gradient-accent', req.admin.id]);
+            await NotificationsService.create(userId, 'Package Changed', `Your package is now ${pkg.name}.`, 'system');
+            
+            return res.json({ success: true, message: `Package changed to ${pkg.name}` });
+        } catch (error) {
+            return res.json({ success: false, message: 'Failed to change package' });
+        }
     }
 
     async addUserMoney(req, res) {
