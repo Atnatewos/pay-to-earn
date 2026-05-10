@@ -7,6 +7,9 @@ const platformConfig = require('../../config/platform.json');
 
 /**
  * Generate human-readable schedule description from config
+ * @param {object} schedule - Schedule config with days and hours
+ * @param {string} featureName - Name of the feature (Tasks, Withdrawals, Deposits)
+ * @returns {string} Human-readable schedule description
  */
 function generateScheduleDescription(schedule, featureName) {
     if (!schedule.enabled) return `${featureName} are currently disabled.`;
@@ -14,12 +17,26 @@ function generateScheduleDescription(schedule, featureName) {
     return `${featureName} available ${days} ${schedule.hoursStart}-${schedule.hoursEnd}`;
 }
 
-// Withdrawal amounts
-router.get('/withdrawal-amounts', (req, res) => {
-    res.json({ success: true, data: withdrawalConfig.fixedAmounts });
+// ============ PLATFORM CONFIG ============
+// Serves ALL platform settings to the frontend
+router.get('/platform', (req, res) => {
+    res.json({
+        success: true,
+        data: {
+            name: platformConfig.name,
+            fullName: platformConfig.fullName,
+            tagline: platformConfig.tagline,
+            adminName: platformConfig.adminName,
+            currency: platformConfig.currency,
+            currencySymbol: platformConfig.currencySymbol,
+            website: platformConfig.website,
+            logo: platformConfig.logo,
+            support: platformConfig.support
+        }
+    });
 });
 
-// Support info
+// ============ SUPPORT INFO ============
 router.get('/support', (req, res) => {
     res.json({
         success: true,
@@ -33,7 +50,12 @@ router.get('/support', (req, res) => {
     });
 });
 
-// Tasks schedule
+// ============ WITHDRAWAL AMOUNTS ============
+router.get('/withdrawal-amounts', (req, res) => {
+    res.json({ success: true, data: withdrawalConfig.fixedAmounts });
+});
+
+// ============ TASKS SCHEDULE ============
 router.get('/tasks-schedule', (req, res) => {
     const schedule = tasksConfig.schedule;
     res.json({
@@ -47,7 +69,7 @@ router.get('/tasks-schedule', (req, res) => {
     });
 });
 
-// Withdrawal schedule
+// ============ WITHDRAWAL SCHEDULE ============
 router.get('/withdrawal-schedule', (req, res) => {
     const schedule = withdrawalConfig.schedule;
     res.json({
@@ -62,7 +84,7 @@ router.get('/withdrawal-schedule', (req, res) => {
     });
 });
 
-// Deposit schedule
+// ============ DEPOSIT SCHEDULE ============
 router.get('/deposit-schedule', (req, res) => {
     const schedule = depositConfig.schedule;
     res.json({
@@ -73,6 +95,20 @@ router.get('/deposit-schedule', (req, res) => {
             bankAccount: depositConfig.bankAccount,
             bankHolder: depositConfig.bankHolder,
             description: generateScheduleDescription(schedule, 'Deposits'),
+            minAmount: depositConfig.minAmount,
+            maxAmount: depositConfig.maxAmount
+        }
+    });
+});
+
+// ============ DEPOSIT BANK INFO ============
+router.get('/deposit-info', (req, res) => {
+    res.json({
+        success: true,
+        data: {
+            bankName: depositConfig.bankName,
+            bankAccount: depositConfig.bankAccount,
+            bankHolder: depositConfig.bankHolder,
             minAmount: depositConfig.minAmount,
             maxAmount: depositConfig.maxAmount
         }

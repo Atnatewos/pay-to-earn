@@ -1,16 +1,25 @@
-
 {
-    "name": "Pay to Earn",
-    "fullName": "Pay to Earn Platform",
+    "name": "THERON",
+    "fullName": "THERON Earn Platform",
     "tagline": "Share & Earn",
+    "adminName": "THERON Earn Admin",
     "currency": "ETB",
     "currencySymbol": "ETB",
-    "adminName": "Pay to Earn Admin",
     "website": "https://pay-to-earn.vercel.app",
+    
+    "logo": {
+        "imageUrl": "https://roulezelectrique.com/wp-content/uploads/2021/11/unnamed-1024x471.png",
+        "emoji": "💰",
+        "showImage": true,
+        "showEmoji": false
+    },
+    
     "support": {
         "telegram": "https://t.me/YourSupportUsername",
         "telegramChannel": "https://t.me/YourChannel",
         "telegramGroup": "https://t.me/YourGroup",
-        "email": "support@paytoearn.com"
+        "email": "support@paytoearn.com",
+        "showInNavbar": true,
+        "showInFooter": true
     }
 }
