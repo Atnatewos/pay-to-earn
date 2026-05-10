@@ -5,7 +5,7 @@ class HomePage {
     }
 
     async render() {
-        Navbar.render(APP_CONFIG.name, false, [
+        Navbar.render((typeof APP_CONFIG !== 'undefined' ? APP_CONFIG.name : 'Earn'), false, [
             { icon: '🔔', title: 'Notifications', onclick: 'NotificationBell.showNotifications()' }
         ]);
         BottomNav.render('/home');
