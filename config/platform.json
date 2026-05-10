@@ -1,0 +1,16 @@
+
+{
+    "name": "Pay to Earn",
+    "fullName": "Pay to Earn Platform",
+    "tagline": "Share & Earn",
+    "currency": "ETB",
+    "currencySymbol": "ETB",
+    "adminName": "Pay to Earn Admin",
+    "website": "https://pay-to-earn.vercel.app",
+    "support": {
+        "telegram": "https://t.me/YourSupportUsername",
+        "telegramChannel": "https://t.me/YourChannel",
+        "telegramGroup": "https://t.me/YourGroup",
+        "email": "support@paytoearn.com"
+    }
+}

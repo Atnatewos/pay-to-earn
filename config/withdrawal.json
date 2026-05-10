@@ -1,0 +1,14 @@
+{
+    "schedule": {
+        "enabled": true,
+        "days": ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"],
+        "hoursStart": "00:00",
+        "hoursEnd": "23:59",
+        "timezone": "Africa/Addis_Ababa"
+    },
+    "fixedAmounts": [300, 1000, 4000, 10000, 25000, 50000, 100000],
+    "requirePassword": true,
+    "minBalance": 100,
+    "processingTime": "24-48 hours",
+    "description": "Withdrawals available {days} from {start} to {end}. Processed within 24-48 hours."
+}

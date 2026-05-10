@@ -1,0 +1,16 @@
+{
+    "schedule": {
+        "enabled": true,
+        "days": ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"],
+        "hoursStart": "00:00",
+        "hoursEnd": "23:59",
+        "timezone": "Africa/Addis_Ababa"
+    },
+    "minAmount": 1600,
+    "maxAmount": 330000,
+    "bankName": "CBE",
+    "bankAccount": "1000428407567",
+    "bankHolder": "ATNATEWOS",
+    "verificationTime": "Within 24 hours",
+    "description": "Deposits available {days} from {start} to {end}. Verified within 24 hours."
+}
