@@ -1,0 +1,33 @@
+{
+  "permissions": [
+    { "code": "dashboard.view", "category": "Dashboard", "description": "View dashboard statistics" },
+    { "code": "users.view", "category": "Users", "description": "View user list and details" },
+    { "code": "users.edit", "category": "Users", "description": "Edit user name, phone, password" },
+    { "code": "users.suspend", "category": "Users", "description": "Suspend or ban user accounts" },
+    { "code": "users.delete", "category": "Users", "description": "Permanently delete user accounts" },
+    { "code": "users.warn", "category": "Users", "description": "Send warnings to users" },
+    { "code": "users.notify", "category": "Users", "description": "Send notifications to users" },
+    { "code": "users.alert", "category": "Users", "description": "Send popup alerts to users" },
+    { "code": "users.level", "category": "Users", "description": "Change user package levels" },
+    { "code": "users.add_money", "category": "Users", "description": "Add bonus money to user accounts" },
+    { "code": "users.manager_rank", "category": "Users", "description": "Assign manager ranks to users" },
+    { "code": "deposits.view", "category": "Deposits", "description": "View deposit list" },
+    { "code": "deposits.verify", "category": "Deposits", "description": "Verify pending deposits" },
+    { "code": "deposits.reject", "category": "Deposits", "description": "Reject pending deposits" },
+    { "code": "deposits.unblock", "category": "Deposits", "description": "Unblock rejected transaction IDs" },
+    { "code": "withdrawals.view", "category": "Withdrawals", "description": "View withdrawal list" },
+    { "code": "withdrawals.process", "category": "Withdrawals", "description": "Approve or reject withdrawals" },
+    { "code": "giftcodes.view", "category": "Gift Codes", "description": "View gift codes" },
+    { "code": "giftcodes.create", "category": "Gift Codes", "description": "Create new gift codes" },
+    { "code": "salaries.view", "category": "Salaries", "description": "View salary history" },
+    { "code": "salaries.process", "category": "Salaries", "description": "Process monthly salaries" },
+    { "code": "features.toggle", "category": "Features", "description": "Toggle platform features on/off" },
+    { "code": "broadcast.send", "category": "Broadcast", "description": "Send broadcast messages" },
+    { "code": "logs.view", "category": "Logs", "description": "View admin activity logs" },
+    { "code": "admins.view", "category": "Admins", "description": "View admin list" },
+    { "code": "admins.create", "category": "Admins", "description": "Create new admin accounts" },
+    { "code": "admins.edit", "category": "Admins", "description": "Edit admin details" },
+    { "code": "admins.delete", "category": "Admins", "description": "Delete admin accounts" },
+    { "code": "admins.permissions", "category": "Admins", "description": "Manage admin permissions" }
+  ]
+}

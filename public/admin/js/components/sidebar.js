@@ -10,6 +10,7 @@ class AdminSidebar {
             { path: '/admin/deposits', icon: '💳', label: 'Deposits' },
             { path: '/admin/withdrawals', icon: '💸', label: 'Withdrawals' },
             { path: '/admin/users', icon: '👥', label: 'Users' },
+            { path: '/admin/admins', icon: '👥', label: 'Admins' },
             { path: '/admin/giftcodes', icon: '🎁', label: 'Gift Codes' },
             { path: '/admin/salaries', icon: '💼', label: 'Salaries' },
             { path: '/admin/features', icon: '⚙️', label: 'Features' },

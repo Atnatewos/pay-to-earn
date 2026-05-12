@@ -30,6 +30,13 @@ document.addEventListener('DOMContentLoaded', () => {
         ]
     });
 
+    router.addRoute('/admin/admins', AdminAdmins, {
+    breadcrumbs: [
+        { label: 'Dashboard', path: '/admin/dashboard' },
+        { label: 'Admins' }
+    ]
+    });
+
     router.addRoute('/admin/giftcodes', AdminGiftCodes, {
         breadcrumbs: [
             { label: 'Dashboard', path: '/admin/dashboard' },
@@ -78,5 +85,6 @@ document.addEventListener('DOMContentLoaded', () => {
             { label: 'Alerts' }
         ]
     });
+    
 
 });
