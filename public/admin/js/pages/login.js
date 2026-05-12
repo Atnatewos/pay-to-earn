@@ -48,11 +48,33 @@ class AdminLogin {
                 });
                 const data = await response.json();
                 
-                if (data.success) {
-                    localStorage.setItem('admin_token', data.data.token);
-                    localStorage.setItem('admin_data', JSON.stringify(data.data.admin));
-                    window.location.hash = '#/admin/dashboard';
-                } else {
+
+            // In the login form submit handler, after successful login:
+            if (data.success) {
+            localStorage.setItem('admin_token', data.data.token);
+            localStorage.setItem('admin_data', JSON.stringify(data.data.admin));
+
+            // Also fetch and store admin permissions
+            try {
+                var permResponse = await fetch(APP_CONFIG.apiUrl + '/admin/admins', {
+                headers: { 'Authorization': 'Bearer ' + data.data.token }
+                });
+                var permData = await permResponse.json();
+                if (permData.success && permData.data && permData.data.admins) {
+                var currentAdmin = permData.data.admins.find(function(a) {
+                    return a.id === data.data.admin.id;
+                });
+                if (currentAdmin) {
+                    localStorage.setItem('admin_permissions', JSON.stringify(currentAdmin.permissions || []));
+                }
+                }
+            } catch (e) {
+                // Permissions fetch failed, admin will have restricted access
+                localStorage.setItem('admin_permissions', '[]');
+            }
+
+            window.location.hash = '#/admin/dashboard';
+            } else {
                     await Dialog.alert(data.message || 'Invalid credentials', 'Login Failed', 'error');
                 }
             } catch (error) {

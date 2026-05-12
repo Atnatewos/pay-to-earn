@@ -8,9 +8,11 @@
 const pool = require('../../config/db');
 const Response = require('../../utils/response');
 
+
 /**
  * Factory function that returns middleware for a specific permission
- * @param {string} permissionCode - Required permission code from config/permissions.json
+ * Returns descriptive error messages for permission denied
+ * @param {string} permissionCode - Required permission code
  * @returns {function} Express middleware
  */
 function requirePermission(permissionCode) {
@@ -18,17 +20,17 @@ function requirePermission(permissionCode) {
     try {
       var adminId = req.admin && req.admin.id;
       if (!adminId) {
-        return Response.error(res, 'Authentication required', 401);
+        return res.status(401).json({ success: false, message: 'Authentication required' });
       }
 
-      // Check if admin is super_admin - they have all permissions
+      // Super admin bypasses all permission checks
       var roleResult = await pool.query(
         'SELECT role FROM admins WHERE id = $1 AND status = $2',
         [adminId, 'active']
       );
 
       if (roleResult.rows.length === 0) {
-        return Response.error(res, 'Admin account not found or inactive', 403);
+        return res.status(403).json({ success: false, message: 'Admin account not found or inactive' });
       }
 
       if (roleResult.rows[0].role === 'super_admin') {
@@ -42,13 +44,16 @@ function requirePermission(permissionCode) {
       );
 
       if (permResult.rows.length === 0) {
-        return Response.error(res, 'Insufficient permissions. Required: ' + permissionCode, 403);
+        return res.status(403).json({
+          success: false,
+          message: 'Insufficient permissions. Required: ' + permissionCode
+        });
       }
 
       next();
     } catch (error) {
       console.error('Permission check error:', error.message);
-      return Response.error(res, 'Permission check failed', 500);
+      return res.status(500).json({ success: false, message: 'Permission check failed' });
     }
   };
 }

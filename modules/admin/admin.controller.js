@@ -43,102 +43,121 @@ class AdminController {
    * List all admins with their permissions
    * Only super_admin can access
    */
-  async listAdmins(req, res) {
+
+    /**
+     * List all admins with their permissions
+     * Excludes the requesting admin from the list (can't see yourself)
+     * Only accessible with admins.view permission
+     */
+    async listAdmins(req, res) {
     try {
-      var result = await pool.query(
-        'SELECT id, username, role, status, last_login, created_at FROM admins ORDER BY created_at DESC'
-      );
+        var currentAdminId = req.admin.id;
+        
+        // Get all admins EXCEPT the current admin (can't manage yourself)
+        var result = await pool.query(
+        'SELECT id, username, role, status, last_login, created_at FROM admins WHERE id != $1 ORDER BY created_at DESC',
+        [currentAdminId]
+        );
 
-      var admins = result.rows;
+        var admins = result.rows;
 
-      // Get permissions for each admin
-      for (var i = 0; i < admins.length; i++) {
+        // Get permissions for each admin
+        for (var i = 0; i < admins.length; i++) {
         var permResult = await pool.query(
-          'SELECT permission_code FROM admin_permissions WHERE admin_id = $1',
-          [admins[i].id]
+            'SELECT permission_code FROM admin_permissions WHERE admin_id = $1',
+            [admins[i].id]
         );
         admins[i].permissions = permResult.rows.map(function(r) { return r.permission_code; });
-      }
+        }
 
-      return res.json({
+        return res.json({
         success: true,
         data: {
-          admins: admins,
-          allPermissions: permissionsConfig.permissions
+            admins: admins,
+            allPermissions: permissionsConfig.permissions
         }
-      });
+        });
     } catch (error) {
-      console.error('listAdmins error:', error.message);
-      return res.json({ success: false, message: 'Failed to load admins' });
+        console.error('listAdmins error:', error.message);
+        return res.json({ success: false, message: 'Failed to load admins' });
     }
-  }
+    }
 
-  /**
-   * Create a new admin account
-   * Only super_admin can create admins
-   * Created admin gets basic permissions unless specified
-   */
-  async createAdmin(req, res) {
+
+    /**
+     * Create a new admin account with default permissions based on role
+     * Super admin can specify custom permissions to override defaults
+     */
+    async createAdmin(req, res) {
     try {
-      var username = req.body.username;
-      var password = req.body.password;
-      var role = req.body.role;
-      var permissionCodes = req.body.permissions || [];
+        var username = req.body.username;
+        var password = req.body.password;
+        var role = req.body.role;
+        var permissionCodes = req.body.permissions || [];
+        var adminDefaults = require('../../config/adminDefaults.json');
 
-      if (!username || !password || !role) {
+        if (!username || !password || !role) {
         return res.json({ success: false, message: 'Username, password, and role are required' });
-      }
+        }
 
-      if (password.length < 6) {
+        if (password.length < 6) {
         return res.json({ success: false, message: 'Password must be at least 6 characters' });
-      }
+        }
 
-      // Check username uniqueness
-      var existingResult = await pool.query(
+        // Check username uniqueness
+        var existingResult = await pool.query(
         'SELECT id FROM admins WHERE username = $1',
         [username]
-      );
-      if (existingResult.rows.length > 0) {
+        );
+        if (existingResult.rows.length > 0) {
         return res.json({ success: false, message: 'Username already exists' });
-      }
+        }
 
-      // Hash password
-      var passwordHash = await bcrypt.hash(password, 12);
+        // Hash password
+        var passwordHash = await bcrypt.hash(password, 12);
 
-      // Create admin
-      var insertResult = await pool.query(
+        // Create admin
+        var insertResult = await pool.query(
         'INSERT INTO admins (username, password_hash, role, created_by, status) VALUES ($1, $2, $3, $4, $5) RETURNING id',
         [username, passwordHash, role, req.admin.id, 'active']
-      );
+        );
 
-      var newAdminId = insertResult.rows[0].id;
+        var newAdminId = insertResult.rows[0].id;
 
-      // Assign permissions
-      if (permissionCodes.length > 0) {
-        for (var i = 0; i < permissionCodes.length; i++) {
-          await pool.query(
-            'INSERT INTO admin_permissions (admin_id, permission_code, granted_by) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING',
-            [newAdminId, permissionCodes[i], req.admin.id]
-          );
+        // Determine which permissions to assign
+        var finalPermissions;
+        if (permissionCodes.length > 0) {
+        // Admin specified custom permissions - use those
+        finalPermissions = permissionCodes;
+        } else {
+        // Use default permissions for this role from config
+        finalPermissions = adminDefaults[role] || [];
         }
-      }
 
-      // Log activity
-      await pool.query(
+        // Assign permissions
+        for (var i = 0; i < finalPermissions.length; i++) {
+        await pool.query(
+            'INSERT INTO admin_permissions (admin_id, permission_code, granted_by) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING',
+            [newAdminId, finalPermissions[i], req.admin.id]
+        );
+        }
+
+        // Log activity
+        await pool.query(
         'INSERT INTO admin_logs (admin_id, action, entity_type, entity_id, details) VALUES ($1, $2, $3, $4, $5)',
-        [req.admin.id, 'admin_created', 'admin', newAdminId, JSON.stringify({ username: username, role: role })]
-      );
+        [req.admin.id, 'admin_created', 'admin', newAdminId, JSON.stringify({ username: username, role: role, permissions: finalPermissions })]
+        );
 
-      return res.json({
+        return res.json({
         success: true,
-        message: 'Admin created successfully',
-        data: { id: newAdminId, username: username, role: role }
-      });
+        message: 'Admin created with ' + finalPermissions.length + ' default permissions',
+        data: { id: newAdminId, username: username, role: role, permissions: finalPermissions }
+        });
     } catch (error) {
-      console.error('createAdmin error:', error.message);
-      return res.json({ success: false, message: 'Failed to create admin' });
+        console.error('createAdmin error:', error.message);
+        return res.json({ success: false, message: 'Failed to create admin' });
     }
-  }
+    }
 
   /**
    * Update an admin's details
@@ -256,37 +275,44 @@ class AdminController {
     }
   }
 
-  /**
-   * Update an admin's permissions
-   * Replace all permissions with the new set
-   */
-  async updateAdminPermissions(req, res) {
+
+    /**
+     * Update an admin's permissions
+     * Cannot change your own permissions
+     * Replaces all permissions with the new set
+     */
+    async updateAdminPermissions(req, res) {
     try {
-      var adminId = req.params.id;
-      var permissionCodes = req.body.permissions || [];
+        var adminId = parseInt(req.params.id);
+        var permissionCodes = req.body.permissions || [];
 
-      // Remove existing permissions
-      await pool.query('DELETE FROM admin_permissions WHERE admin_id = $1', [adminId]);
+        // Prevent self-permission changes
+        if (adminId === req.admin.id) {
+        return res.json({ success: false, message: 'Cannot modify your own permissions' });
+        }
 
-      // Add new permissions
-      for (var i = 0; i < permissionCodes.length; i++) {
+        // Remove existing permissions
+        await pool.query('DELETE FROM admin_permissions WHERE admin_id = $1', [adminId]);
+
+        // Add new permissions
+        for (var i = 0; i < permissionCodes.length; i++) {
         await pool.query(
-          'INSERT INTO admin_permissions (admin_id, permission_code, granted_by) VALUES ($1, $2, $3)',
-          [adminId, permissionCodes[i], req.admin.id]
+            'INSERT INTO admin_permissions (admin_id, permission_code, granted_by) VALUES ($1, $2, $3)',
+            [adminId, permissionCodes[i], req.admin.id]
         );
-      }
+        }
 
-      await pool.query(
+        await pool.query(
         'INSERT INTO admin_logs (admin_id, action, entity_type, entity_id, details) VALUES ($1, $2, $3, $4, $5)',
         [req.admin.id, 'admin_permissions_updated', 'admin', adminId, JSON.stringify({ permissions: permissionCodes })]
-      );
+        );
 
-      return res.json({ success: true, message: 'Permissions updated' });
+        return res.json({ success: true, message: 'Permissions updated' });
     } catch (error) {
-      console.error('updateAdminPermissions error:', error.message);
-      return res.json({ success: false, message: 'Failed to update permissions' });
+        console.error('updateAdminPermissions error:', error.message);
+        return res.json({ success: false, message: 'Failed to update permissions' });
     }
-  }
+    }
 
   /**
    * Get available permissions list from config
