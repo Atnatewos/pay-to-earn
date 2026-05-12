@@ -97,12 +97,12 @@ class AuthService {
     }
 
     async getUserProfile(userId) {
-        const result = await pool.query(
-            'SELECT id, phone, full_name, avatar_url, referral_code, status, balance, capital, earnings_balance, total_earned, total_deposited, active_package, package_expiry, created_at FROM users WHERE id = $1',
-            [userId]
-        );
-        if (result.rows.length === 0) throw new Error('User not found');
-        return result.rows[0];
+    var result = await pool.query(
+        'SELECT id, phone, full_name, avatar_url, referral_code, status, balance, capital, earnings_balance, total_earned, total_deposited, active_package, package_expiry, manager_rank, created_at FROM users WHERE id = $1',
+        [userId]
+    );
+    if (result.rows.length === 0) throw new Error('User not found');
+    return result.rows[0];
     }
 
     async updateProfile(userId, data) {
