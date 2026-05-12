@@ -860,3 +860,50 @@ body.telegram-mini-app .bottom-nav {
         padding-bottom: calc(100px + env(safe-area-inset-bottom));
     }
 }
+
+/* Add to public/css/design-system.css */
+
+/* ============================================
+   LOADER ANIMATIONS
+   ============================================ */
+
+@keyframes loader-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes loader-shimmer {
+  0% { opacity: 1; }
+  50% { opacity: 0.4; }
+  100% { opacity: 1; }
+}
+
+@keyframes loader-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.95); }
+}
+
+@keyframes loader-bounce {
+  0%, 80%, 100% { transform: scale(0); }
+  40% { transform: scale(1); }
+}
+
+.loader-ring {
+  display: inline-block;
+}
+
+.loader-ring-sm {
+  display: inline-block;
+}
+
+.loader-container {
+  min-height: 100px;
+}
+
+.loader-text {
+  animation: loader-pulse 1.5s ease-in-out infinite;
+}
+
+.skeleton-line {
+  animation: loader-shimmer 1.5s ease-in-out infinite;
+}

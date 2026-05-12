@@ -115,4 +115,18 @@ router.get('/deposit-info', (req, res) => {
     });
 });
 
+// ============ MANAGER RANKS ============
+// Serves manager rank definitions from config
+router.get('/manager-ranks', (req, res) => {
+    const managerConfig = require('../../config/managers.json');
+    res.json({
+        success: true,
+        data: {
+            ranks: managerConfig.ranks || [],
+            paymentDay: managerConfig.paymentDay || 1,
+            description: managerConfig.description || ''
+        }
+    });
+});
+
 module.exports = router;

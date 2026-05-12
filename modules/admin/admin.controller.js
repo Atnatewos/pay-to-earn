@@ -440,6 +440,101 @@ class AdminController {
             return res.json({ success: true, message: `${amount} ETB added to user earnings` });
         } catch (error) { return res.json({ success: false, message: 'Failed to add money' }); }
     }
+
+
+    // modules/admin/admin.controller.js - ADD THESE TWO METHODS before module.exports
+
+/**
+ * Get manager rank summary for a specific user
+ * Used by admin to view and manage user's manager level
+ */
+async getUserManagerInfo(req, res) {
+    try {
+        const userId = req.params.id;
+        const SalaryService = require('../salary/salary.service');
+        
+        // Get user's current team counts and eligibility
+        const eligibility = await SalaryService.checkRankEligibility(userId);
+        
+        // Get user's current assigned manager rank
+        const userResult = await pool.query(
+            'SELECT manager_rank, full_name, phone FROM users WHERE id = $1',
+            [userId]
+        );
+        
+        if (userResult.rows.length === 0) {
+            return res.json({ success: false, message: 'User not found' });
+        }
+        
+        const user = userResult.rows[0];
+        
+        return res.json({
+            success: true,
+            data: {
+                currentRank: user.manager_rank || null,
+                teamCounts: eligibility.currentCounts,
+                eligibleRanks: eligibility.eligibleRanks,
+                highestEligibleRank: eligibility.highestRank,
+                allRanks: eligibility.eligibleRanks.length > 0 ? eligibility.eligibleRanks : []
+            }
+        });
+    } catch (error) {
+        return res.json({ success: false, message: 'Failed to load manager info' });
+    }
+}
+
+    /**
+     * Manually assign a manager rank to a user
+     * Admin can set any rank regardless of team size
+     */
+    async assignManagerRank(req, res) {
+        try {
+            const { rankName } = req.body;
+            const userId = req.params.id;
+            const managerConfig = require('../../config/managers.json');
+            
+            // Validate rank exists in config
+            const validRanks = managerConfig.ranks.map(r => r.name);
+            if (rankName !== 'none' && !validRanks.includes(rankName)) {
+                return res.json({ success: false, message: 'Invalid manager rank' });
+            }
+            
+            const newRank = rankName === 'none' ? null : rankName;
+            
+            // Update user's manager rank
+            await pool.query(
+                'UPDATE users SET manager_rank = $1 WHERE id = $2',
+                [newRank, userId]
+            );
+            
+            // Get user info for notification
+            const user = await pool.query('SELECT full_name, phone FROM users WHERE id = $1', [userId]);
+            const userName = user.rows[0]?.full_name || user.rows[0]?.phone || 'User';
+            
+            // Send notification
+            if (newRank) {
+                await NotificationsService.create(
+                    userId,
+                    '🏆 Manager Rank Assigned!',
+                    `Congratulations ${userName}! You have been assigned the rank of "${newRank}". Check your profile for details.`,
+                    'system'
+                );
+                
+                // Send popup alert
+                await pool.query(
+                    'INSERT INTO user_alerts (user_id, title, message, type, icon, color, sent_by) VALUES ($1,$2,$3,$4,$5,$6,$7)',
+                    [userId, '🏆 Manager Rank Updated!', `You are now a "${newRank}". This rank comes with privileges and recognition.`, 'success', '🏆', 'gradient-accent', req.admin.id]
+                );
+            }
+            
+            return res.json({ 
+                success: true, 
+                message: newRank ? `Manager rank set to "${newRank}"` : 'Manager rank removed' 
+            });
+        } catch (error) {
+            return res.json({ success: false, message: 'Failed to assign rank' });
+        }
+    }
 }
 
 module.exports = new AdminController();

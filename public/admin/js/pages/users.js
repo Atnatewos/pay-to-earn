@@ -87,7 +87,7 @@ class AdminUsers {
     static doFilter(status) { const i = router.currentAdminPage; i.statusFilter = status; i.currentPage = 1; i.loadUsers(); }
     static goPage(p) { const i = router.currentAdminPage; i.currentPage = p; i.loadUsers(); window.scrollTo(0,0); }
 
-    // ============ VIEW USER ============
+    // ============ VIEW USER WITH ALL TABS ============
     static async viewUser(userId) {
         const token = localStorage.getItem('admin_token');
         const apiUrl = APP_CONFIG.apiUrl;
@@ -105,6 +105,8 @@ class AdminUsers {
                         <h3 class="modal-title">${u.full_name||u.phone}</h3>
                         <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">×</button>
                     </div>
+
+                    <!-- User Summary Card -->
                     <div class="card card-gradient text-center mb-3">
                         <div class="profile-avatar" style="margin:0 auto">${u.avatar_url||'👤'}</div>
                         <h4 class="mt-2">${u.full_name||'N/A'}</h4>
@@ -112,6 +114,7 @@ class AdminUsers {
                         <div class="mt-2">
                             <span class="badge ${u.status==='active'?'badge-success':u.status==='suspended'?'badge-warning':'badge-danger'}">${u.status}</span>
                             ${u.active_package?`<span class="badge badge-primary ml-1">${u.active_package}</span>`:''}
+                            ${u.manager_rank ? `<span class="badge ml-1" style="background:linear-gradient(135deg,#FFD700,#FFA500);color:#000;">🏆 ${u.manager_rank}</span>` : ''}
                             ${u.warningCount > 0 ? `<span class="badge badge-warning ml-1">⚠️ ${u.warningCount} warnings</span>` : ''}
                         </div>
                     </div>
@@ -133,21 +136,28 @@ class AdminUsers {
                             <div class="bank-info-row"><span class="bank-info-label">Balance</span><span class="bank-info-value font-bold">${Number(u.balance||0).toLocaleString()} ETB</span></div>
                             <div class="bank-info-row"><span class="bank-info-label">Capital</span><span class="bank-info-value">${Number(u.capital||0).toLocaleString()} ETB</span></div>
                             <div class="bank-info-row"><span class="bank-info-label">Earnings</span><span class="bank-info-value">${Number(u.earnings_balance||0).toLocaleString()} ETB</span></div>
+                            <div class="bank-info-row"><span class="bank-info-label">Manager Rank</span><span class="bank-info-value">${u.manager_rank || 'None'}</span></div>
                             <div class="bank-info-row"><span class="bank-info-label">Referral Code</span><span class="bank-info-value">${u.referral_code}</span></div>
                             <div class="bank-info-row"><span class="bank-info-label">Warnings</span><span class="bank-info-value">${u.warningCount || 0}</span></div>
                             <div class="bank-info-row"><span class="bank-info-label">Joined</span><span class="bank-info-value">${new Date(u.created_at).toLocaleDateString()}</span></div>
                         </div>
 
+                        <!-- Action Buttons Row 1 -->
                         <div class="flex gap-2 mb-3">
                             <button class="btn btn-outline btn-sm btn-block" onclick="AdminUsers.editUserModal(${u.id},'${u.phone}','${u.full_name||''}')">✏️ Edit</button>
                             <button class="btn btn-outline btn-sm btn-block" onclick="AdminUsers.notifyUserModal(${u.id})">📢 Notify</button>
                             <button class="btn btn-outline btn-sm btn-block" onclick="AdminUsers.alertUserModal(${u.id})">🔔 Alert</button>
                             <button class="btn btn-outline btn-sm btn-block" onclick="AdminUsers.warnUserModal(${u.id})">⚠️ Warn</button>
                         </div>
+
+                        <!-- Action Buttons Row 2 -->
                         <div class="flex gap-2 mb-2">
                             <button class="btn btn-outline btn-sm btn-block" onclick="AdminUsers.levelModal(${u.id},'${u.active_package||'none'}')">📊 Level</button>
                             <button class="btn btn-outline btn-sm btn-block" onclick="AdminUsers.addMoneyModal(${u.id})">💵 Add Money</button>
+                            <button class="btn btn-outline btn-sm btn-block" onclick="AdminUsers.managerRankModal(${u.id})">🏆 Rank</button>
                         </div>
+
+                        <!-- Action Buttons Row 3 - Status -->
                         <div class="flex gap-2">
                             ${u.status==='active' ? `
                                 <button class="btn btn-warning btn-block" onclick="AdminUsers.suspendUserModal(${u.id},'suspend')">⏸️ Suspend</button>
@@ -233,78 +243,39 @@ class AdminUsers {
     }
 
     // ============ MODAL METHODS ============
+
     static async editUserModal(id, phone, name) {
         const overlay = document.createElement('div');
         overlay.className = 'modal-overlay';
         overlay.innerHTML = `
             <div class="modal animate-scaleIn" style="max-width:420px;">
-                <div class="modal-header">
-                    <h3 class="modal-title">✏️ Edit User</h3>
-                    <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">×</button>
-                </div>
+                <div class="modal-header"><h3 class="modal-title">✏️ Edit User</h3><button class="modal-close" onclick="this.closest('.modal-overlay').remove()">×</button></div>
                 <form id="editUserForm">
-                    <div class="form-group">
-                        <label class="form-label">Full Name</label>
-                        <input type="text" class="form-input" id="editFullName" value="${name||''}" placeholder="Full name">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Phone Number</label>
-                        <input type="text" class="form-input" id="editPhone" value="${phone}" placeholder="Phone">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">New Password (leave blank to keep current)</label>
-                        <input type="text" class="form-input" id="editPassword" placeholder="New password (min 6 chars)">
-                    </div>
-                    <div class="flex gap-2 mt-4">
-                        <button type="button" class="btn btn-outline btn-block" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
-                        <button type="submit" class="btn btn-primary btn-block">💾 Save All Changes</button>
-                    </div>
+                    <div class="form-group"><label class="form-label">Full Name</label><input type="text" class="form-input" id="editFullName" value="${name||''}" placeholder="Full name"></div>
+                    <div class="form-group"><label class="form-label">Phone Number</label><input type="text" class="form-input" id="editPhone" value="${phone}" placeholder="Phone"></div>
+                    <div class="form-group"><label class="form-label">New Password (leave blank to keep)</label><input type="text" class="form-input" id="editPassword" placeholder="New password (min 6 chars)"></div>
+                    <div class="flex gap-2 mt-4"><button type="button" class="btn btn-outline btn-block" onclick="this.closest('.modal-overlay').remove()">Cancel</button><button type="submit" class="btn btn-primary btn-block">💾 Save All Changes</button></div>
                 </form>
             </div>
         `;
         overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
         document.body.appendChild(overlay);
-
         document.getElementById('editUserForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const newName = document.getElementById('editFullName').value.trim();
             const newPhone = document.getElementById('editPhone').value.trim();
             const newPass = document.getElementById('editPassword').value.trim();
-
             const body = {};
             if (newName !== (name||'')) body.fullName = newName;
             if (newPhone !== phone) body.phone = newPhone;
             if (newPass && newPass.length >= 6) body.password = newPass;
-            else if (newPass && newPass.length < 6) {
-                await Dialog.alert('Password must be at least 6 characters', 'Invalid', 'warning');
-                return;
-            }
-            
-            if (Object.keys(body).length === 0) {
-                await Dialog.alert('No changes made', 'Info', 'info');
-                return;
-            }
-
-            const token = localStorage.getItem('admin_token');
-            const apiUrl = APP_CONFIG.apiUrl;
-            try {
-                const res = await fetch(`${apiUrl}/admin/users/${id}`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                    body: JSON.stringify(body)
-                });
-                const data = await res.json();
-                if (data.success) {
-                    await Dialog.alert('User updated successfully!', 'Updated', 'success');
-                    overlay.remove();
-                    document.querySelector('.modal-overlay')?.remove();
-                    router.navigate('/admin/users');
-                } else {
-                    await Dialog.alert(data.message || 'Failed to update', 'Error', 'error');
-                }
-            } catch (error) {
-                await Dialog.alert('Failed to update user', 'Error', 'error');
-            }
+            else if (newPass && newPass.length < 6) { await Dialog.alert('Password must be at least 6 characters', 'Invalid', 'warning'); return; }
+            if (Object.keys(body).length === 0) { await Dialog.alert('No changes made', 'Info', 'info'); return; }
+            const token = localStorage.getItem('admin_token'); const apiUrl = APP_CONFIG.apiUrl;
+            const res = await fetch(`${apiUrl}/admin/users/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(body) });
+            const data = await res.json();
+            if (data.success) { await Dialog.alert('User updated!', 'Updated', 'success'); overlay.remove(); document.querySelector('.modal-overlay')?.remove(); router.navigate('/admin/users'); }
+            else { await Dialog.alert(data.message, 'Error', 'error'); }
         });
     }
 
@@ -330,8 +301,7 @@ class AdminUsers {
             if (!title || !message) return;
             const token = localStorage.getItem('admin_token'); const apiUrl = APP_CONFIG.apiUrl;
             await fetch(`${apiUrl}/admin/users/${id}/notify`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ title, message }) });
-            await Dialog.alert('Notification sent!', 'Sent', 'success');
-            overlay.remove();
+            await Dialog.alert('Notification sent!', 'Sent', 'success'); overlay.remove();
         });
     }
 
@@ -357,8 +327,7 @@ class AdminUsers {
             if (!title || !message) return;
             const token = localStorage.getItem('admin_token'); const apiUrl = APP_CONFIG.apiUrl;
             await fetch(`${apiUrl}/admin/users/${id}/alert`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ customTitle: title, customMessage: message }) });
-            await Dialog.alert('Alert sent!', 'Sent', 'success');
-            overlay.remove();
+            await Dialog.alert('Alert sent!', 'Sent', 'success'); overlay.remove();
         });
     }
 
@@ -393,57 +362,23 @@ class AdminUsers {
     }
 
     static async levelModal(id, currentPackage) {
-        const apiUrl = APP_CONFIG.apiUrl;
-        const token = localStorage.getItem('admin_token');
-        
-        // Fetch packages from API (which reads from config)
+        const apiUrl = APP_CONFIG.apiUrl; const token = localStorage.getItem('admin_token');
         let packages = [{ name: 'No Package', value: 'none' }];
         try {
-            const response = await fetch(`${apiUrl}/packages`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
+            const response = await fetch(`${apiUrl}/packages`, { headers: { 'Authorization': `Bearer ${token}` } });
             const result = await response.json();
             if (result.success && result.data && result.data.length > 0) {
-                packages = [
-                    { name: 'No Package', value: 'none' },
-                    ...result.data.map(p => ({ name: p.name, value: p.name }))
-                ];
+                packages = [{ name: 'No Package', value: 'none' }, ...result.data.map(p => ({ name: p.name, value: p.name }))];
             }
-        } catch (e) {
-            // API failed - show empty, admin can retry
-            await Dialog.alert('Failed to load packages. Please try again.', 'Error', 'error');
-            return;
-        }
-        
-        let options = packages.map(p => 
-            `<option value="${p.value}" ${p.value === currentPackage ? 'selected' : ''}>${p.name}</option>`
-        ).join('');
-        
-        const overlay = document.createElement('div');
-        overlay.className = 'modal-overlay';
-        overlay.innerHTML = `
-            <div class="modal animate-scaleIn" style="max-width:380px;text-align:center;">
-                <h4 class="mb-3">📊 Change Package</h4>
-                <select class="form-select mb-3" id="levelSelect">${options}</select>
-                <div class="flex gap-2">
-                    <button class="btn btn-outline btn-block" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
-                    <button class="btn btn-primary btn-block" id="confirmLevel">Change</button>
-                </div>
-            </div>
-        `;
-        overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
-        document.body.appendChild(overlay);
-        
+        } catch (e) { await Dialog.alert('Failed to load packages', 'Error', 'error'); return; }
+        let options = packages.map(p => `<option value="${p.value}" ${p.value===currentPackage?'selected':''}>${p.name}</option>`).join('');
+        const overlay = document.createElement('div'); overlay.className = 'modal-overlay';
+        overlay.innerHTML = `<div class="modal animate-scaleIn" style="max-width:380px;text-align:center;"><h4 class="mb-3">📊 Change Package</h4><select class="form-select mb-3" id="levelSelect">${options}</select><div class="flex gap-2"><button class="btn btn-outline btn-block" onclick="this.closest('.modal-overlay').remove()">Cancel</button><button class="btn btn-primary btn-block" id="confirmLevel">Change</button></div></div>`;
+        overlay.addEventListener('click', e => { if (e.target===overlay) overlay.remove(); }); document.body.appendChild(overlay);
         document.getElementById('confirmLevel').addEventListener('click', async () => {
             const pkgName = document.getElementById('levelSelect').value;
-            await fetch(`${apiUrl}/admin/users/${id}/level`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify({ packageName: pkgName })
-            });
-            overlay.remove();
-            document.querySelector('.modal-overlay')?.remove();
-            router.navigate('/admin/users');
+            await fetch(`${apiUrl}/admin/users/${id}/level`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ packageName: pkgName }) });
+            overlay.remove(); document.querySelector('.modal-overlay')?.remove(); router.navigate('/admin/users');
         });
     }
 
@@ -463,14 +398,84 @@ class AdminUsers {
         const confirmed = await Dialog.confirm(`Reset password to: ${newPass}?`, 'Reset Password', '🔄 Reset', 'Cancel');
         if (!confirmed) return;
         const token = localStorage.getItem('admin_token'); const apiUrl = APP_CONFIG.apiUrl;
+        const res = await fetch(`${apiUrl}/admin/users/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ password: newPass }) });
+        const data = await res.json();
+        if (data.success) { await Dialog.alert(`Password reset to: ${newPass}`, 'Password Reset', 'success'); document.querySelector('.modal-overlay')?.remove(); router.navigate('/admin/users'); }
+        else { await Dialog.alert(data.message, 'Error', 'error'); }
+    }
+
+    /**
+     * Show manager rank management modal
+     * Allows admin to view eligibility and assign ranks
+     */
+    static async managerRankModal(id) {
+        const token = localStorage.getItem('admin_token');
+        const apiUrl = APP_CONFIG.apiUrl;
+        
         try {
-            const res = await fetch(`${apiUrl}/admin/users/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ password: newPass }) });
-            const data = await res.json();
-            if (data.success) {
-                await Dialog.alert(`Password reset to: ${newPass}`, 'Password Reset', 'success');
-                document.querySelector('.modal-overlay')?.remove(); router.navigate('/admin/users');
-            } else { await Dialog.alert(data.message, 'Error', 'error'); }
-        } catch (error) { await Dialog.alert('Failed to reset password', 'Error', 'error'); }
+            const [infoResponse, ranksResponse] = await Promise.all([
+                fetch(`${apiUrl}/admin/users/${id}/manager-info`, { headers: { 'Authorization': `Bearer ${token}` } }),
+                fetch(`${apiUrl}/config/manager-ranks`)
+            ]);
+            
+            const infoResult = await infoResponse.json();
+            const ranksResult = await ranksResponse.json();
+            
+            const info = infoResult.data || {};
+            const allRanks = ranksResult.data?.ranks || [];
+            
+            let options = '<option value="none">No Rank (Auto-detect)</option>';
+            allRanks.forEach(rank => {
+                const selected = info.currentRank === rank.name ? 'selected' : '';
+                options += `<option value="${rank.name}" ${selected}>${rank.name} - ${rank.monthlySalary.toLocaleString()} ETB/mo</option>`;
+            });
+            
+            let eligibilityHtml = '';
+            if (info.teamCounts) {
+                eligibilityHtml = `
+                    <div class="bank-info-card mb-3">
+                        <div class="bank-info-row"><span>Level A Members</span><span>${info.teamCounts.a}</span></div>
+                        <div class="bank-info-row"><span>Level B Members</span><span>${info.teamCounts.b}</span></div>
+                        <div class="bank-info-row"><span>Level C Members</span><span>${info.teamCounts.c}</span></div>
+                        <div class="bank-info-row"><span>Total Team</span><span class="font-bold">${info.teamCounts.total}</span></div>
+                    </div>
+                `;
+            }
+            
+            if (info.highestEligibleRank) {
+                eligibilityHtml += `
+                    <div class="card card-accent mb-3 text-center">
+                        <p class="text-sm">Auto-qualified for:</p>
+                        <p class="font-bold">${info.highestEligibleRank.name}</p>
+                        <p class="text-xs text-secondary">${info.highestEligibleRank.monthlySalary.toLocaleString()} ETB/month</p>
+                    </div>
+                `;
+            }
+            
+            const overlay = document.createElement('div');
+            overlay.className = 'modal-overlay';
+            overlay.innerHTML = `
+                <div class="modal animate-scaleIn" style="max-width:420px;">
+                    <div class="modal-header"><h3 class="modal-title">🏆 Manager Rank</h3><button class="modal-close" onclick="this.closest('.modal-overlay').remove()">×</button></div>
+                    ${eligibilityHtml}
+                    <div class="form-group">
+                        <label class="form-label">Current Rank: <strong>${info.currentRank || 'None'}</strong></label>
+                        <select class="form-select" id="managerRankSelect">${options}</select>
+                    </div>
+                    <p class="text-xs text-secondary mb-3">⚠️ Manual assignment overrides auto-detection.</p>
+                    <div class="flex gap-2"><button class="btn btn-outline btn-block" onclick="this.closest('.modal-overlay').remove()">Cancel</button><button class="btn btn-primary btn-block" id="confirmRankBtn">💾 Save Rank</button></div>
+                </div>
+            `;
+            overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+            document.body.appendChild(overlay);
+            
+            document.getElementById('confirmRankBtn').addEventListener('click', async () => {
+                const rankName = document.getElementById('managerRankSelect').value;
+                await fetch(`${apiUrl}/admin/users/${id}/manager-rank`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ rankName }) });
+                await Dialog.alert(rankName === 'none' ? 'Manager rank removed.' : `Manager rank set to "${rankName}"!`, 'Rank Updated', 'success');
+                overlay.remove(); document.querySelector('.modal-overlay')?.remove(); router.navigate('/admin/users');
+            });
+        } catch (error) { await Dialog.alert('Failed to load manager info', 'Error', 'error'); }
     }
 
     unmount() {}

@@ -51,4 +51,8 @@ router.get('/salary/history', authenticateAdmin, AdminController.getSalaryHistor
 router.post('/users/:id/level', authenticateAdmin, AdminController.changeUserLevel);
 router.post('/users/:id/add-money', authenticateAdmin, AdminController.addUserMoney);
 
+// Manager rank management
+router.get('/users/:id/manager-info', authenticateAdmin, AdminController.getUserManagerInfo);
+router.post('/users/:id/manager-rank', authenticateAdmin, AdminController.assignManagerRank);
+
 module.exports = router;
