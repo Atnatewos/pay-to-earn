@@ -1,106 +1,62 @@
 // public/js/components/alertPopup.js
-class AlertPopup {
-    static async checkAlerts() {
-        const token = localStorage.getItem('token');
-        if (!token) return;
 
-        try {
-            const apiUrl = APP_CONFIG.apiUrl;
-            const response = await fetch(`${apiUrl}/alerts/unread`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            const result = await response.json();
-            
-            if (result.success && result.data && result.data.length > 0) {
-                AlertPopup.showAlerts(result.data);
-            }
-        } catch (error) {
-            // Silently fail - alerts are non-critical
-        }
-    }
+/**
+ * Alert/Broadcast Popup Component
+ * Shows sticky alert banners on home page
+ * Long messages truncated with "More" link
+ * Click opens scrollable popup modal for full message
+ * Works on mobile and desktop
+ */
+var AlertPopup = {
+  checkAlerts: function() {
+    var token = sessionStorage.getItem('token');
+    if (!token) return;
+    var apiUrl = APP_CONFIG.apiUrl;
+    fetch(apiUrl + '/alerts/sticky', { headers: { 'Authorization': 'Bearer ' + token } })
+      .then(function(r) { return r.json(); })
+      .then(function(result) { if (result.success && result.data && result.data.length > 0) AlertPopup.showStickyAlerts(result.data); })
+      .catch(function() {});
+  },
 
-    static showAlerts(alerts) {
-        let currentIndex = 0;
+  showStickyAlerts: function(alerts) {
+    var container = document.getElementById('stickyAlerts');
+    if (!container) return;
+    container.innerHTML = '';
 
-        const showNext = () => {
-            if (currentIndex >= alerts.length) {
-                document.querySelector('.alert-overlay')?.remove();
-                return;
-            }
+    alerts.forEach(function(alert) {
+      var bg = alert.color === 'color-danger' ? 'var(--color-danger-bg)' : alert.color === 'color-warning' ? 'var(--color-warning-bg)' : 'var(--color-info-bg)';
+      var bd = alert.color === 'color-danger' ? 'var(--color-danger)' : alert.color === 'color-warning' ? 'var(--color-warning)' : 'var(--color-info)';
+      var short = alert.message;
+      var truncated = false;
+      if (short.length > 100) { short = short.substring(0, 100) + '...'; truncated = true; }
 
-            const alert = alerts[currentIndex];
-            const overlay = document.querySelector('.alert-overlay') || document.createElement('div');
-            
-            if (!document.querySelector('.alert-overlay')) {
-                overlay.className = 'alert-overlay';
-                document.body.appendChild(overlay);
-            }
+      var el = document.createElement('div');
+      el.style.cssText = 'background:' + bg + ';border-left:4px solid ' + bd + ';padding:10px 14px;display:flex;align-items:center;gap:10px;margin-bottom:6px;border-radius:var(--radius-lg);font-size:var(--font-sm);cursor:pointer;';
+      el.innerHTML = '<span style="font-size:22px;flex-shrink:0;">' + alert.icon + '</span>' +
+        '<div style="flex:1;min-width:0;"><strong>' + alert.title + '</strong>' +
+        '<div style="color:var(--color-text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + short + '</div></div>' +
+        (truncated ? '<span style="color:var(--color-primary);font-size:11px;flex-shrink:0;">More</span>' : '') +
+        '<button onclick="event.stopPropagation();this.parentElement.remove();fetch(\'' + APP_CONFIG.apiUrl + '/alerts/' + alert.id + '/dismiss\',{method:\'POST\',headers:{\'Authorization\':\'Bearer ' + sessionStorage.getItem('token') + '\'}});" style="font-size:18px;cursor:pointer;opacity:0.5;flex-shrink:0;">×</button>';
 
-            const colorMap = {
-                'gradient-primary': 'var(--gradient-primary)',
-                'gradient-accent': 'var(--gradient-accent)',
-                'color-danger': '#FF7675',
-                'color-warning': '#FDCB6E',
-                'color-info': '#74B9FF',
-                'color-success': '#00B894'
-            };
+      el.addEventListener('click', function(e) { if (e.target.tagName === 'BUTTON') return; AlertPopup.showFullAlert(alert); });
+      container.appendChild(el);
+    });
+  },
 
-            overlay.innerHTML = `
-                <div class="alert-modal animate-scaleIn">
-                    <div class="alert-modal-header" style="background: ${colorMap[alert.color] || 'var(--gradient-primary)'}; color: ${alert.color.includes('color') ? '#2D3436' : 'white'};">
-                        <div class="alert-modal-icon">${alert.icon}</div>
-                    </div>
-                    <div class="alert-modal-body">
-                        <h3 class="alert-modal-title">${alert.title}</h3>
-                        <p class="alert-modal-message">${alert.message}</p>
-                    </div>
-                    <div class="alert-modal-footer">
-                        ${alerts.length > 1 ? `
-                            <span class="text-xs text-secondary">${currentIndex + 1} of ${alerts.length}</span>
-                        ` : ''}
-                        <button class="btn ${alert.color.includes('color') ? 'btn-' + alert.type.replace('danger','danger').replace('warning','warning') : 'btn-primary'} btn-block" 
-                                onclick="AlertPopup.dismissAlert(${alert.id}, ${currentIndex}, ${alerts.length})">
-                            ${alert.type === 'danger' ? 'I Understand' : alert.type === 'warning' ? 'Acknowledge' : 'OK'}
-                        </button>
-                    </div>
-                </div>
-            `;
+  showFullAlert: function(alert) {
+    var bg = alert.color === 'color-danger' ? 'var(--color-danger-bg)' : alert.color === 'color-warning' ? 'var(--color-warning-bg)' : 'var(--color-info-bg)';
+    var bd = alert.color === 'color-danger' ? 'var(--color-danger)' : alert.color === 'color-warning' ? 'var(--color-warning)' : 'var(--color-info)';
+    var overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.style.zIndex = '10000';
+    overlay.innerHTML = '<div class="modal animate-scaleIn" style="max-width:500px;width:90%;max-height:80vh;overflow-y:auto;border-radius:var(--radius-2xl);">' +
+      '<div style="background:' + bg + ';padding:32px 24px 20px;text-align:center;border-radius:var(--radius-2xl) var(--radius-2xl) 0 0;border-bottom:3px solid ' + bd + ';">' +
+      '<span style="font-size:48px;">' + alert.icon + '</span><h3 style="margin-top:12px;">' + alert.title + '</h3></div>' +
+      '<div style="padding:24px;max-height:40vh;overflow-y:auto;line-height:1.7;color:var(--color-text-secondary);white-space:pre-wrap;word-wrap:break-word;">' + alert.message + '</div>' +
+      '<div style="padding:0 24px 24px;"><button class="btn btn-primary btn-block" onclick="this.closest(\'.modal-overlay\').remove()">Close</button></div></div>';
+    overlay.addEventListener('click', function(e) { if (e.target === overlay) overlay.remove(); });
+    document.body.appendChild(overlay);
+  }
+};
 
-            // Dismiss on overlay click (optional)
-            overlay.onclick = (e) => {
-                if (e.target === overlay) {
-                    AlertPopup.dismissAlert(alert.id, currentIndex, alerts.length);
-                }
-            };
-        };
-
-        showNext();
-    }
-
-    static async dismissAlert(alertId, currentIndex, totalAlerts) {
-        const token = localStorage.getItem('token');
-        const apiUrl = APP_CONFIG.apiUrl;
-        
-        try {
-            await fetch(`${apiUrl}/alerts/${alertId}/dismiss`, {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-        } catch (error) {
-            // Continue even if dismiss fails
-        }
-
-        currentIndex++;
-        if (currentIndex >= totalAlerts) {
-            document.querySelector('.alert-overlay')?.remove();
-        } else {
-            // Refresh alerts and show next
-            AlertPopup.checkAlerts();
-        }
-    }
-}
-
-// Check for alerts when pages load
-document.addEventListener('DOMContentLoaded', () => {
-    setTimeout(() => AlertPopup.checkAlerts(), 2000);
-});
+document.addEventListener('DOMContentLoaded', function() { setTimeout(function() { AlertPopup.checkAlerts(); }, 2000); });

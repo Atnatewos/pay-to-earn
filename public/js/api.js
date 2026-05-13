@@ -3,6 +3,8 @@
 /**
  * API Client
  * Handles all HTTP requests with authentication
+ * Uses sessionStorage for per-tab token isolation
+ * Falls back to localStorage for backward compatibility
  * Global 403 handler shows permission denied popup
  * All config from APP_CONFIG - no hardcoded URLs
  */
@@ -11,28 +13,32 @@ var API = {
   token: null,
 
   /**
-   * Store authentication token
+   * Store authentication token in sessionStorage
+   * This allows multiple tabs to have different logged-in users
    */
   setToken: function(token) {
     this.token = token;
-    localStorage.setItem('token', token);
+    sessionStorage.setItem('token', token);
   },
 
   /**
    * Retrieve stored token
+   * Checks sessionStorage first, falls back to localStorage for backward compatibility
    */
   getToken: function() {
     if (!this.token) {
-      this.token = localStorage.getItem('token');
+      this.token = sessionStorage.getItem('token') || localStorage.getItem('token');
     }
     return this.token;
   },
 
   /**
-   * Clear authentication data
+   * Clear authentication data from both storages
    */
   clearToken: function() {
     this.token = null;
+    sessionStorage.removeItem('token');
+    sessionStorage.removeItem('user');
     localStorage.removeItem('token');
     localStorage.removeItem('user');
   },
@@ -41,11 +47,14 @@ var API = {
    * Make an HTTP request to the API
    * Automatically handles 401 (redirect to login) and 403 (show permission popup)
    * @param {string} endpoint - API endpoint path
-   * @param {object} options - Fetch options
-   * @returns {object} Parsed JSON response
+   * @param {object} options - Fetch options with method and body
+   * @returns {object} Parsed JSON response data
    */
   request: async function(endpoint, options) {
-    if (!options) options = {};
+    if (!options) {
+      options = {};
+    }
+
     var url = this.base + endpoint;
     var token = this.getToken();
 
@@ -69,17 +78,17 @@ var API = {
     try {
       response = await fetch(url, config);
     } catch (networkError) {
-      throw new Error('Network error. Please check your connection.');
+      throw new Error('Network error. Please check your internet connection.');
     }
 
     var data;
     try {
       data = await response.json();
     } catch (parseError) {
-      throw new Error('Server returned an invalid response.');
+      throw new Error('Server returned an invalid response. Please try again.');
     }
 
-    // Handle 401 - Unauthorized (expired/missing token)
+    // Handle 401 - Unauthorized (expired or missing token)
     if (response.status === 401) {
       this.clearToken();
       window.location.hash = '#/login';
@@ -99,7 +108,7 @@ var API = {
         ? getPermissionName(permissionCode)
         : permissionCode;
 
-      // Show permission denied popup
+      // Show permission denied popup using custom Dialog component
       if (typeof Dialog !== 'undefined') {
         Dialog.alert(
           'You don\'t have permission to ' + friendlyName + '. Contact the super admin for access.',
@@ -119,21 +128,28 @@ var API = {
   },
 
   /**
-   * GET request
+   * Convenience method for GET requests
+   * @param {string} endpoint - API endpoint
+   * @returns {object} Response data
    */
   get: function(endpoint) {
     return this.request(endpoint, { method: 'GET' });
   },
 
   /**
-   * POST request
+   * Convenience method for POST requests
+   * @param {string} endpoint - API endpoint
+   * @param {object} body - Request body object
+   * @returns {object} Response data
    */
   post: function(endpoint, body) {
     return this.request(endpoint, { method: 'POST', body: body });
   },
 
   /**
-   * DELETE request
+   * Convenience method for DELETE requests
+   * @param {string} endpoint - API endpoint
+   * @returns {object} Response data
    */
   delete: function(endpoint) {
     return this.request(endpoint, { method: 'DELETE' });
