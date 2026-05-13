@@ -13,6 +13,8 @@ const { requirePermission } = require('../auth/auth.middleware');
 
 // Public
 router.post('/login', authLimiter, AdminController.login);
+router.get('/me/permissions', authenticateAdmin, AdminController.getMyPermissions);
+
 
 // Dashboard
 router.get('/dashboard', authenticateAdmin, requirePermission('dashboard.view'), AdminController.getDashboard);

@@ -283,6 +283,14 @@ class AdminController {
      */
     async updateAdminPermissions(req, res) {
     try {
+        var uniquePermissions = [];
+        for (var i = 0; i < permissionCodes.length; i++) {
+        if (uniquePermissions.indexOf(permissionCodes[i]) === -1) {
+            uniquePermissions.push(permissionCodes[i]);
+        }
+        }
+        permissionCodes = uniquePermissions;
+
         var adminId = parseInt(req.params.id);
         var permissionCodes = req.body.permissions || [];
 
@@ -697,6 +705,56 @@ class AdminController {
       return res.json({ success: false, message: 'Failed to assign rank' });
     }
   }
+
+
+    /**
+     * Get current admin's own permissions
+     * No special permission required - any authenticated admin can see their own permissions
+     * This solves the chicken-and-egg problem where admin needs admins.view to see their permissions
+     * but they need permissions to know if they have admins.view
+     */
+    async getMyPermissions(req, res) {
+    try {
+        var adminId = req.admin.id;
+        var roleResult = await pool.query('SELECT role FROM admins WHERE id = $1', [adminId]);
+
+        if (roleResult.rows.length === 0) {
+        return res.json({ success: false, message: 'Admin not found' });
+        }
+
+        var role = roleResult.rows[0].role;
+
+        // Super admin gets all permissions
+        if (role === 'super_admin') {
+        return res.json({
+            success: true,
+            data: {
+            role: role,
+            permissions: ['*']
+            }
+        });
+        }
+
+        // Get this admin's permissions from database
+        var permResult = await pool.query(
+        'SELECT permission_code FROM admin_permissions WHERE admin_id = $1',
+        [adminId]
+        );
+
+        var permissions = permResult.rows.map(function(r) { return r.permission_code; });
+
+        return res.json({
+        success: true,
+        data: {
+            role: role,
+            permissions: permissions
+        }
+        });
+    } catch (error) {
+        console.error('getMyPermissions error:', error.message);
+        return res.json({ success: false, message: 'Failed to load permissions' });
+    }
+    }
 }
 
 module.exports = new AdminController();
