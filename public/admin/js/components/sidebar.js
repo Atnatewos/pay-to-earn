@@ -2,20 +2,18 @@
 
 /**
  * Admin Sidebar Component
- * Filters links based on admin permissions from localStorage
- * Super admin sees all links
- * Other admins only see links matching their permissions
+ * ALL permission and admin data reads use Session controller
+ * Session is the SINGLE source of truth
  */
 var AdminSidebar = {
   render: function(currentPath) {
     var existing = document.getElementById('adminSidebar');
     if (existing) existing.remove();
 
-    var adminData = JSON.parse(localStorage.getItem('admin_data') || '{}');
-    var adminPermissions = JSON.parse(localStorage.getItem('admin_permissions') || '[]');
+    var adminData = Session.getAdminData() || {};
+    var adminPermissions = Session.getAdminPermissions();
     var isSuperAdmin = adminData.role === 'super_admin';
 
-    // All available sidebar links with required permissions
     var allLinks = [
       { path: '/admin/dashboard', icon: '📊', label: 'Dashboard', permission: 'dashboard.view' },
       { path: '/admin/deposits', icon: '💳', label: 'Deposits', permission: 'deposits.view' },
@@ -30,13 +28,10 @@ var AdminSidebar = {
       { path: '/admin/admins', icon: '🛡️', label: 'Admins', permission: 'admins.view' }
     ];
 
-    // Filter links based on permissions
     var visibleLinks;
     if (isSuperAdmin || (adminPermissions.length === 1 && adminPermissions[0] === '*')) {
-      // Super admin sees everything
       visibleLinks = allLinks;
     } else {
-      // Other admins only see links they have permission for
       visibleLinks = allLinks.filter(function(link) {
         return adminPermissions.indexOf(link.permission) !== -1;
       });
@@ -51,18 +46,21 @@ var AdminSidebar = {
       return '<a class="sidebar-link' + isActive + '" onclick="router.navigate(\'' + link.path + '\')"><span class="link-icon">' + link.icon + '</span>' + link.label + '</a>';
     }).join('');
 
-    sidebar.innerHTML = 
+    var username = adminData.username || 'Admin';
+    var role = adminData.role || 'Staff';
+
+    sidebar.innerHTML =
       '<div class="sidebar-header">' +
         '<div class="sidebar-logo">' + APP_CONFIG.adminName + '</div>' +
-        '<div class="sidebar-subtitle">' + (adminData.role || 'Staff') + '</div>' +
+        '<div class="sidebar-subtitle">' + role + '</div>' +
       '</div>' +
       '<nav class="sidebar-nav">' + linksHtml + '</nav>' +
       '<div class="sidebar-footer">' +
         '<div class="sidebar-user">' +
           '<div class="sidebar-avatar">🛡️</div>' +
           '<div class="sidebar-user-info">' +
-            '<div class="sidebar-user-name">' + (adminData.username || 'Admin') + '</div>' +
-            '<div class="sidebar-user-role">' + (adminData.role || 'Staff') + '</div>' +
+            '<div class="sidebar-user-name">' + username + '</div>' +
+            '<div class="sidebar-user-role">' + role + '</div>' +
           '</div>' +
         '</div>' +
         '<button class="btn btn-danger btn-sm btn-block" onclick="AdminAPI.logout()">🚪 Logout</button>' +

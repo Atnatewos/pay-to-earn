@@ -2,8 +2,8 @@
 
 /**
  * Single Page Application Router
- * Handles all client-side routing for both user and admin panels
- * Checks authentication tokens from sessionStorage first, localStorage as fallback
+ * Handles ALL client-side routing for user and admin panels
+ * ALL auth checks use Session controller (single source of truth)
  * Enforces suspended/banned user restrictions
  * Auto-injects breadcrumbs and admin action buttons
  */
@@ -27,12 +27,6 @@ var Router = function() {
   }.bind(this));
 };
 
-/**
- * Register a route with optional metadata for breadcrumbs
- * @param {string} path - URL hash path like '/home' or '/admin/dashboard'
- * @param {function} page - Page constructor function
- * @param {object} meta - Optional breadcrumbs, back button, action buttons
- */
 Router.prototype.addRoute = function(path, page, meta) {
   if (!meta) meta = {};
   this.routes[path] = page;
@@ -44,10 +38,6 @@ Router.prototype.addRoute = function(path, page, meta) {
   };
 };
 
-/**
- * Start a watcher that periodically checks if breadcrumbs are missing
- * This handles cases where pages re-render themselves (tabs, filters)
- */
 Router.prototype.startWatcher = function() {
   if (this.watcherInterval) clearInterval(this.watcherInterval);
 
@@ -56,18 +46,17 @@ Router.prototype.startWatcher = function() {
     var path = hash.split('?')[0];
     var isAdmin = path.startsWith('/admin');
 
-    // Skip auth pages
     if (path === '/login' || path === '/register' || path === '/admin/login' || path === '/' || path === '/home') {
       return;
     }
 
     if (isAdmin) {
-      var mainEl = this.adminContainer?.querySelector('.admin-main');
+      var mainEl = this.adminContainer && this.adminContainer.querySelector('.admin-main');
       if (mainEl && !mainEl.querySelector('.admin-breadcrumb')) {
         this.forceInjectAdminBreadcrumb(path);
       }
     } else {
-      var pageEl = this.userContainer?.querySelector('.page');
+      var pageEl = this.userContainer && this.userContainer.querySelector('.page');
       if (pageEl && !pageEl.querySelector('.breadcrumb')) {
         this.forceInjectUserBreadcrumb(path);
       }
@@ -75,10 +64,6 @@ Router.prototype.startWatcher = function() {
   }.bind(this), 300);
 };
 
-/**
- * Public method for pages to call when they re-render themselves
- * Re-injects breadcrumbs after a tab switch or filter change
- */
 Router.prototype.reinjectNavigation = function() {
   var hash = window.location.hash.slice(1) || '/';
   var path = hash.split('?')[0];
@@ -96,10 +81,6 @@ Router.prototype.reinjectNavigation = function() {
   }
 };
 
-/**
- * Main route handler - called on hashchange and page load
- * Parses URL hash, checks authentication, renders the appropriate page
- */
 Router.prototype.handleRoute = function() {
   if (this.navigating) return;
 
@@ -108,7 +89,6 @@ Router.prototype.handleRoute = function() {
   var path = hashParts[0];
   var queryString = hashParts[1];
 
-  // Parse query parameters from URL hash
   var queryParams = {};
   if (queryString) {
     queryString.split('&').forEach(function(pair) {
@@ -122,7 +102,6 @@ Router.prototype.handleRoute = function() {
   this.currentPath = path;
   this.currentQuery = queryParams;
 
-  // Track navigation history (max 50 entries)
   if (this.history.length === 0 || this.history[this.history.length - 1] !== path) {
     this.history.push(path);
   }
@@ -132,48 +111,35 @@ Router.prototype.handleRoute = function() {
 
   var isAdminRoute = path.startsWith('/admin');
 
-  // Check tokens - sessionStorage first, localStorage as fallback
-  var adminToken = sessionStorage.getItem('admin_token') || localStorage.getItem('admin_token');
-  var userToken = sessionStorage.getItem('token') || localStorage.getItem('token');
+  // USE SESSION CONTROLLER - Single source of truth
+  var adminToken = Session.getAdminToken();
+  var userToken = Session.getUserToken();
 
-  // Toggle visibility between user app and admin app
   document.getElementById('app').style.display = isAdminRoute ? 'none' : 'block';
   document.getElementById('adminApp').style.display = isAdminRoute ? 'flex' : 'none';
 
-  // ============ ADMIN ROUTING ============
   if (isAdminRoute) {
-    // Admin already logged in but visiting login page → redirect to dashboard
     if (adminToken && path === '/admin/login') {
       window.location.hash = '#/admin/dashboard';
       return;
     }
-
-    // Admin not logged in and not on login page → redirect to login
     if (!adminToken && path !== '/admin/login') {
       window.location.hash = '#/admin/login';
       return;
     }
-  }
-
-  // ============ USER ROUTING ============
-  if (!isAdminRoute) {
+  } else {
     var publicRoutes = ['/', '/login', '/register', '/support'];
-
-    // User not logged in and trying to access protected page → redirect to login
     if (!userToken && !publicRoutes.includes(path)) {
       window.location.hash = '#/login';
       return;
     }
-
-    // User logged in but visiting login/register → redirect to home
     if (userToken && (path === '/login' || path === '/register' || path === '/')) {
       window.location.hash = '#/home';
       return;
     }
 
-    // Check if suspended/banned user is trying to access restricted pages
     if (userToken) {
-      var userData = JSON.parse(sessionStorage.getItem('user') || localStorage.getItem('user') || '{}');
+      var userData = Session.getUserData() || {};
 
       if (userData.status === 'suspended' || userData.status === 'banned') {
         var allowedRoutes = ['/home', '/profile', '/support', '/login', '/register', '/'];
@@ -187,8 +153,6 @@ Router.prototype.handleRoute = function() {
 
             if (typeof Dialog !== 'undefined') {
               Dialog.alert(message, title, 'warning');
-            } else {
-              alert(message);
             }
           }, 300);
 
@@ -199,12 +163,10 @@ Router.prototype.handleRoute = function() {
     }
   }
 
-  // Render the page if route exists
   var page = this.routes[path];
   if (page) {
     this.navigating = true;
 
-    // Unmount current page before rendering new one
     if (isAdminRoute && this.currentAdminPage && this.currentAdminPage.unmount) {
       this.currentAdminPage.unmount();
     }
@@ -212,7 +174,6 @@ Router.prototype.handleRoute = function() {
       this.currentPage.unmount();
     }
 
-    // Create page instance and render
     var container = isAdminRoute ? this.adminContainer : this.userContainer;
     var pageInstance = new page(container);
 
@@ -224,7 +185,6 @@ Router.prototype.handleRoute = function() {
 
     pageInstance.render();
 
-    // Inject breadcrumbs after render completes
     setTimeout(function() {
       this.injectNow(path, isAdminRoute);
       this.navigating = false;
@@ -232,9 +192,6 @@ Router.prototype.handleRoute = function() {
   }
 };
 
-/**
- * Inject breadcrumbs and action buttons for the current path
- */
 Router.prototype.injectNow = function(path, isAdmin) {
   if (isAdmin) {
     this.forceInjectAdminBreadcrumb(path);
@@ -244,9 +201,6 @@ Router.prototype.injectNow = function(path, isAdmin) {
   }
 };
 
-/**
- * Inject user breadcrumbs into the page
- */
 Router.prototype.forceInjectUserBreadcrumb = function(path) {
   var meta = this.routeMeta[path];
   if (!meta || !meta.breadcrumbs || meta.breadcrumbs.length === 0) return;
@@ -260,13 +214,9 @@ Router.prototype.forceInjectUserBreadcrumb = function(path) {
 
   nav.innerHTML = meta.breadcrumbs.map(function(item, i) {
     var isLast = i === meta.breadcrumbs.length - 1;
-    var linkHtml = '';
-
-    if (!isLast) {
-      linkHtml = '<a onclick="router.navigate(\'' + (item.path || '#') + '\')" class="breadcrumb-link">' + item.label + '</a>';
-    } else {
-      linkHtml = '<span>' + item.label + '</span>';
-    }
+    var linkHtml = isLast
+      ? '<span>' + item.label + '</span>'
+      : '<a onclick="router.navigate(\'' + (item.path || '#') + '\')" class="breadcrumb-link">' + item.label + '</a>';
 
     return '<span class="breadcrumb-item ' + (isLast ? 'active' : '') + '">' +
       linkHtml +
@@ -274,15 +224,12 @@ Router.prototype.forceInjectUserBreadcrumb = function(path) {
     '</span>';
   }).join('');
 
-  var pageEl = this.userContainer?.querySelector('.page');
+  var pageEl = this.userContainer && this.userContainer.querySelector('.page');
   if (pageEl && !pageEl.querySelector('[data-router="breadcrumb"]')) {
     pageEl.insertBefore(nav, pageEl.firstChild);
   }
 };
 
-/**
- * Inject admin breadcrumbs into the admin main content area
- */
 Router.prototype.forceInjectAdminBreadcrumb = function(path) {
   var meta = this.routeMeta[path];
   if (!meta || !meta.breadcrumbs || meta.breadcrumbs.length === 0) return;
@@ -296,13 +243,9 @@ Router.prototype.forceInjectAdminBreadcrumb = function(path) {
 
   nav.innerHTML = meta.breadcrumbs.map(function(item, i) {
     var isLast = i === meta.breadcrumbs.length - 1;
-    var linkHtml = '';
-
-    if (!isLast) {
-      linkHtml = '<a onclick="router.navigate(\'' + (item.path || '#') + '\')" class="breadcrumb-link">' + item.label + '</a>';
-    } else {
-      linkHtml = '<span>' + item.label + '</span>';
-    }
+    var linkHtml = isLast
+      ? '<span>' + item.label + '</span>'
+      : '<a onclick="router.navigate(\'' + (item.path || '#') + '\')" class="breadcrumb-link">' + item.label + '</a>';
 
     return '<span class="breadcrumb-item ' + (isLast ? 'active' : '') + '">' +
       linkHtml +
@@ -310,15 +253,12 @@ Router.prototype.forceInjectAdminBreadcrumb = function(path) {
     '</span>';
   }).join('');
 
-  var mainEl = this.adminContainer?.querySelector('.admin-main');
+  var mainEl = this.adminContainer && this.adminContainer.querySelector('.admin-main');
   if (mainEl && !mainEl.querySelector('[data-router="breadcrumb"]')) {
     mainEl.insertBefore(nav, mainEl.firstChild);
   }
 };
 
-/**
- * Inject admin action buttons at the bottom of admin content
- */
 Router.prototype.forceInjectAdminActions = function(path) {
   var meta = this.routeMeta[path];
   if (!meta || !meta.actions || meta.actions.length === 0) return;
@@ -334,19 +274,14 @@ Router.prototype.forceInjectAdminActions = function(path) {
     return '<button class="btn btn-' + (btn.variant || 'primary') + ' ' + (btn.block ? 'btn-block' : '') + '" onclick="' + btn.onclick + '">' + (btn.icon || '') + ' ' + btn.label + '</button>';
   }).join('');
 
-  var mainEl = this.adminContainer?.querySelector('.admin-main');
+  var mainEl = this.adminContainer && this.adminContainer.querySelector('.admin-main');
   if (mainEl && !mainEl.querySelector('[data-router="actions"]')) {
     mainEl.appendChild(container);
   }
 };
 
-/**
- * Navigate to a specific route by setting the URL hash
- * @param {string} path - URL hash path like '/home'
- */
 Router.prototype.navigate = function(path) {
   window.location.hash = '#' + path;
 };
 
-// Create the global router instance
 var router = new Router();
