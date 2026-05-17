@@ -3,60 +3,179 @@
 /**
  * Alert/Broadcast Popup Component
  * Shows sticky alert banners on home page
- * Long messages truncated with "More" link
- * Click opens scrollable popup modal for full message
- * Works on mobile and desktop
+ * Long messages are truncated with "More" link
+ * Clicking opens full message in a scrollable popup modal
+ * All styling through CSS classes - zero inline styles
  */
 var AlertPopup = {
+
+  /**
+   * Check for undismissed alerts from the server
+   * Called on home page load
+   */
   checkAlerts: function() {
-    var token = sessionStorage.getItem('token');
-    if (!token) return;
+    var token = Session.getUserToken();
+    if (!token) {
+      return;
+    }
+
     var apiUrl = APP_CONFIG.apiUrl;
-    fetch(apiUrl + '/alerts/sticky', { headers: { 'Authorization': 'Bearer ' + token } })
-      .then(function(r) { return r.json(); })
-      .then(function(result) { if (result.success && result.data && result.data.length > 0) AlertPopup.showStickyAlerts(result.data); })
-      .catch(function() {});
+
+    fetch(apiUrl + '/alerts/sticky', {
+      headers: { 'Authorization': 'Bearer ' + token }
+    })
+      .then(function(response) {
+        return response.json();
+      })
+      .then(function(result) {
+        if (result.success && result.data && result.data.length > 0) {
+          AlertPopup.showStickyAlerts(result.data);
+        }
+      })
+      .catch(function(error) {
+        // Silently fail - alerts are non-critical
+        console.warn('AlertPopup: Failed to fetch alerts:', error.message);
+      });
   },
 
+  /**
+   * Display sticky alert banners at the top of the page
+   * Each alert is clickable to show full message
+   * @param {Array} alerts - Array of alert objects from the server
+   */
   showStickyAlerts: function(alerts) {
     var container = document.getElementById('stickyAlerts');
-    if (!container) return;
+    if (!container) {
+      return;
+    }
+
     container.innerHTML = '';
 
     alerts.forEach(function(alert) {
-      var bg = alert.color === 'color-danger' ? 'var(--color-danger-bg)' : alert.color === 'color-warning' ? 'var(--color-warning-bg)' : 'var(--color-info-bg)';
-      var bd = alert.color === 'color-danger' ? 'var(--color-danger)' : alert.color === 'color-warning' ? 'var(--color-warning)' : 'var(--color-info)';
-      var short = alert.message;
-      var truncated = false;
-      if (short.length > 100) { short = short.substring(0, 100) + '...'; truncated = true; }
+      // Determine CSS classes based on alert type
+      var bgClass = 'bg-info-light';
+      var borderClass = 'border-left-info';
 
-      var el = document.createElement('div');
-      el.style.cssText = 'background:' + bg + ';border-left:4px solid ' + bd + ';padding:10px 14px;display:flex;align-items:center;gap:10px;margin-bottom:6px;border-radius:var(--radius-lg);font-size:var(--font-sm);cursor:pointer;';
-      el.innerHTML = '<span style="font-size:22px;flex-shrink:0;">' + alert.icon + '</span>' +
-        '<div style="flex:1;min-width:0;"><strong>' + alert.title + '</strong>' +
-        '<div style="color:var(--color-text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + short + '</div></div>' +
-        (truncated ? '<span style="color:var(--color-primary);font-size:11px;flex-shrink:0;">More</span>' : '') +
-        '<button onclick="event.stopPropagation();this.parentElement.remove();fetch(\'' + APP_CONFIG.apiUrl + '/alerts/' + alert.id + '/dismiss\',{method:\'POST\',headers:{\'Authorization\':\'Bearer ' + sessionStorage.getItem('token') + '\'}});" style="font-size:18px;cursor:pointer;opacity:0.5;flex-shrink:0;">×</button>';
+      if (alert.color === 'color-danger') {
+        bgClass = 'bg-danger-light';
+        borderClass = 'border-left-danger';
+      } else if (alert.color === 'color-warning') {
+        bgClass = 'bg-warning-light';
+        borderClass = 'border-left-warning';
+      }
 
-      el.addEventListener('click', function(e) { if (e.target.tagName === 'BUTTON') return; AlertPopup.showFullAlert(alert); });
-      container.appendChild(el);
+      // Truncate long messages
+      var displayMessage = alert.message;
+      var isTruncated = false;
+
+      if (displayMessage.length > 100) {
+        displayMessage = displayMessage.substring(0, 100) + '...';
+        isTruncated = true;
+      }
+
+      // Build alert element using CSS classes
+      var alertElement = document.createElement('div');
+      alertElement.className = 'alert-bar ' + bgClass + ' ' + borderClass;
+
+      var moreLink = '';
+      if (isTruncated) {
+        moreLink = '<span class="alert-bar-more">More</span>';
+      }
+
+      alertElement.innerHTML =
+        '<span class="alert-bar-icon">' + alert.icon + '</span>' +
+        '<div class="alert-bar-content">' +
+          '<div class="alert-bar-title">' + alert.title + '</div>' +
+          '<div class="alert-bar-message">' + displayMessage + '</div>' +
+        '</div>' +
+        moreLink +
+        '<button class="alert-bar-dismiss">×</button>';
+
+      // Dismiss button handler
+      var dismissButton = alertElement.querySelector('.alert-bar-dismiss');
+      dismissButton.addEventListener('click', function(event) {
+        event.stopPropagation();
+        alertElement.remove();
+
+        // Send dismiss request to server
+        var token = Session.getUserToken();
+        if (token) {
+          fetch(APP_CONFIG.apiUrl + '/alerts/' + alert.id + '/dismiss', {
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer ' + token }
+          }).catch(function() {
+            // Silently fail
+          });
+        }
+      });
+
+      // Click to open full alert in modal
+      alertElement.addEventListener('click', function(event) {
+        if (event.target.tagName === 'BUTTON') {
+          return;
+        }
+        AlertPopup.showFullAlert(alert);
+      });
+
+      container.appendChild(alertElement);
     });
   },
 
+  /**
+   * Show the full alert message in a scrollable popup modal
+   * Works on both mobile and desktop
+   * @param {Object} alert - Alert object with full message
+   */
   showFullAlert: function(alert) {
-    var bg = alert.color === 'color-danger' ? 'var(--color-danger-bg)' : alert.color === 'color-warning' ? 'var(--color-warning-bg)' : 'var(--color-info-bg)';
-    var bd = alert.color === 'color-danger' ? 'var(--color-danger)' : alert.color === 'color-warning' ? 'var(--color-warning)' : 'var(--color-info)';
+    // Determine colors
+    var headerBg = 'var(--color-info-bg)';
+    var borderColor = 'var(--color-info)';
+
+    if (alert.color === 'color-danger') {
+      headerBg = 'var(--color-danger-bg)';
+      borderColor = 'var(--color-danger)';
+    } else if (alert.color === 'color-warning') {
+      headerBg = 'var(--color-warning-bg)';
+      borderColor = 'var(--color-warning)';
+    }
+
+    // Create modal overlay
     var overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
     overlay.style.zIndex = '10000';
-    overlay.innerHTML = '<div class="modal animate-scaleIn" style="max-width:500px;width:90%;max-height:80vh;overflow-y:auto;border-radius:var(--radius-2xl);">' +
-      '<div style="background:' + bg + ';padding:32px 24px 20px;text-align:center;border-radius:var(--radius-2xl) var(--radius-2xl) 0 0;border-bottom:3px solid ' + bd + ';">' +
-      '<span style="font-size:48px;">' + alert.icon + '</span><h3 style="margin-top:12px;">' + alert.title + '</h3></div>' +
-      '<div style="padding:24px;max-height:40vh;overflow-y:auto;line-height:1.7;color:var(--color-text-secondary);white-space:pre-wrap;word-wrap:break-word;">' + alert.message + '</div>' +
-      '<div style="padding:0 24px 24px;"><button class="btn btn-primary btn-block" onclick="this.closest(\'.modal-overlay\').remove()">Close</button></div></div>';
-    overlay.addEventListener('click', function(e) { if (e.target === overlay) overlay.remove(); });
+
+    overlay.innerHTML =
+      '<div class="modal animate-scaleIn" style="max-width:500px; width:90%; max-height:80vh; overflow-y:auto; border-radius:var(--radius-2xl);">' +
+        '<div class="alert-modal-header border-bottom-3" style="background:' + headerBg + '; border-color:' + borderColor + ';">' +
+          '<span class="alert-modal-icon">' + alert.icon + '</span>' +
+          '<h3 class="alert-modal-title">' + alert.title + '</h3>' +
+        '</div>' +
+        '<div class="alert-modal-body">' + alert.message + '</div>' +
+        '<div class="alert-modal-footer">' +
+          '<button class="btn btn-primary btn-block">Close</button>' +
+        '</div>' +
+      '</div>';
+
+    // Close button handler
+    var closeButton = overlay.querySelector('button');
+    closeButton.addEventListener('click', function() {
+      overlay.remove();
+    });
+
+    // Click outside to close
+    overlay.addEventListener('click', function(event) {
+      if (event.target === overlay) {
+        overlay.remove();
+      }
+    });
+
     document.body.appendChild(overlay);
   }
 };
 
-document.addEventListener('DOMContentLoaded', function() { setTimeout(function() { AlertPopup.checkAlerts(); }, 2000); });
+// Check for alerts when the page loads
+document.addEventListener('DOMContentLoaded', function() {
+  setTimeout(function() {
+    AlertPopup.checkAlerts();
+  }, 2000);
+});
