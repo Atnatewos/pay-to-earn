@@ -1,0 +1,15 @@
+{
+  "alertTruncationLength": 100,
+  "animations": {
+    "enabled": true,
+    "speed": "normal"
+  },
+  "loadingSpinner": {
+    "size": 32,
+    "color": "var(--color-primary)",
+    "secondaryColor": "var(--color-border)"
+  },
+  "toastDuration": 3000,
+  "paginationLimit": 20,
+  "description": "UI/UX configuration settings"
+}

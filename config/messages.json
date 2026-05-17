@@ -1,0 +1,31 @@
+{
+  "deposit": {
+    "verified": "Your deposit of {amount} ETB has been verified and added to your capital. Your package is now active.",
+    "rejected": "Your deposit of {amount} ETB was rejected. Reason: {reason}",
+    "pending": "Your deposit of {amount} ETB is pending verification. We will review it within 24 hours."
+  },
+  "withdrawal": {
+    "approved": "Your withdrawal of {amount} ETB has been approved and sent to your bank account.",
+    "rejected": "Your withdrawal of {amount} ETB was rejected. Reason: {reason}. Amount has been refunded to your balance.",
+    "pending": "Your withdrawal request for {amount} ETB is being processed. You will receive your funds within 24-48 hours."
+  },
+  "suspension": {
+    "banned": "Your account has been permanently banned. Reason: {reason}. You cannot register again with this phone number.",
+    "suspended": "Your account has been suspended. Reason: {reason}. Please contact support for assistance."
+  },
+  "warning": {
+    "received": "You have received a warning. Reason: {reason}. This is warning #{count}. Continued violations may result in account suspension."
+  },
+  "admin": {
+    "defaultSuspendReason": "Admin action",
+    "defaultWarnReason": "Policy violation"
+  },
+  "commission": {
+    "referralReceived": "You received {amount} ETB from a Level {level} referral deposit.",
+    "taskReceived": "You earned {amount} ETB from a Level {level} team member's task."
+  },
+  "task": {
+    "allCompleted": "You completed all {count} tasks today and earned {amount} ETB. Come back tomorrow!",
+    "restDay": "Tasks are not available today. Share your referral link and earn while you rest!"
+  }
+}
