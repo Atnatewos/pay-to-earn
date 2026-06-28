@@ -32,32 +32,11 @@
   "csp": {
     "enabled": false,
     "description": "DISABLED: Frontend contains inline event handlers",
-    "allowedScripts": [
-      "'self'",
-      "'unsafe-inline'",
-      "https://telegram.org",
-      "https://api.qrserver.com"
-    ],
-    "allowedStyles": [
-      "'self'",
-      "'unsafe-inline'",
-      "https://fonts.googleapis.com"
-    ],
-    "allowedFonts": [
-      "'self'",
-      "https://fonts.gstatic.com"
-    ],
-    "allowedImages": [
-      "'self'",
-      "data:",
-      "https://api.qrserver.com",
-      "https://roulezelectrique.com",
-      "https:"
-    ],
-    "allowedConnections": [
-      "'self'",
-      "https://api.qrserver.com"
-    ]
+    "allowedScripts": ["'self'", "'unsafe-inline'", "https://telegram.org", "https://api.qrserver.com"],
+    "allowedStyles": ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+    "allowedFonts": ["'self'", "https://fonts.gstatic.com"],
+    "allowedImages": ["'self'", "data:", "https://api.qrserver.com", "https://roulezelectrique.com", "https:"],
+    "allowedConnections": ["'self'", "https://api.qrserver.com"]
   },
   "inputSanitization": {
     "stripHtml": true,
