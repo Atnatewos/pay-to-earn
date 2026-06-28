@@ -7,11 +7,10 @@
 
 // Default values (overwritten by server config on load)
 const APP_CONFIG = {
-    // API & URLs 
-    // Since frontend and backend are on the same domain (Vercel or Localhost), 
-    // we just use relative paths! No need for hardcoded URLs anymore.
+    // API & URLs (auto-detect environment)
+    // Since frontend and backend are on the same domain, we use relative paths
     apiUrl: '/api',
-    frontendUrl: window.location.origin, // Automatically detects localhost or vercel.app
+    frontendUrl: window.location.origin,
 
     // Platform identity
     name: 'Pay to Earn',
@@ -61,7 +60,9 @@ async function fetchPlatformConfig() {
             if (c.support) APP_CONFIG.support = c.support;
             document.title = c.fullName || APP_CONFIG.fullName;
         }
-    } catch (e) {}
+    } catch (e) {
+        // Silently fail and use default fallback values
+    }
 }
 
 async function fetchDepositConfig() {
@@ -73,9 +74,11 @@ async function fetchDepositConfig() {
             if (result.data.bankAccount) APP_CONFIG.bankAccount = result.data.bankAccount;
             if (result.data.bankHolder) APP_CONFIG.bankHolder = result.data.bankHolder;
         }
-    } catch (e) {}
+    } catch (e) {
+        // Silently fail and use default fallback values
+    }
 }
 
-// Fetch server configs
+// Fetch server configs on load
 fetchPlatformConfig();
 fetchDepositConfig();

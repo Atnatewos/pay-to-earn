@@ -1,21 +1,45 @@
 {
   "senior_admin": [
-    "dashboard.view", "users.view", "users.edit", "users.suspend", "users.warn",
-    "users.notify", "users.alert", "users.level", "users.add_money", "users.manager_rank",
-    "deposits.view", "deposits.verify", "deposits.reject", "deposits.unblock",
-    "withdrawals.view", "withdrawals.process",
-    "giftcodes.view", "giftcodes.create",
-    "salaries.view", "salaries.process",
-    "features.toggle", "broadcast.send", "logs.view"
+    "dashboard.view",
+    "users.view",
+    "users.edit",
+    "users.suspend",
+    "users.warn",
+    "users.notify",
+    "users.alert",
+    "users.level",
+    "users.add_money",
+    "users.manager_rank",
+    "deposits.view",
+    "deposits.verify",
+    "deposits.reject",
+    "deposits.unblock",
+    "withdrawals.view",
+    "withdrawals.process",
+    "giftcodes.view",
+    "giftcodes.create",
+    "salaries.view",
+    "salaries.process",
+    "features.toggle",
+    "broadcast.send",
+    "logs.view"
   ],
   "admin": [
-    "dashboard.view", "users.view",
-    "deposits.view", "deposits.verify", "deposits.reject",
-    "withdrawals.view", "withdrawals.process",
-    "giftcodes.view", "giftcodes.create",
+    "dashboard.view",
+    "users.view",
+    "deposits.view",
+    "deposits.verify",
+    "deposits.reject",
+    "withdrawals.view",
+    "withdrawals.process",
+    "giftcodes.view",
+    "giftcodes.create",
     "logs.view"
   ],
   "moderator": [
-    "dashboard.view", "users.view", "deposits.view", "logs.view"
+    "dashboard.view",
+    "users.view",
+    "deposits.view",
+    "logs.view"
   ]
 }

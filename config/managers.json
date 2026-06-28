@@ -1,10 +1,45 @@
 {
   "ranks": [
-    { "name": "Trainee Manager", "levelA": 10, "levelB": 0, "levelC": 0, "monthlySalary": 5000, "description": "Basic team leader" },
-    { "name": "Marketing Manager", "levelA": 20, "levelB": 30, "levelC": 0, "monthlySalary": 10000, "description": "Growing team leader" },
-    { "name": "Marketing General Manager", "levelA": 0, "levelB": 50, "levelC": 50, "monthlySalary": 25000, "description": "Senior team leader" },
-    { "name": "Regional Manager", "levelA": 0, "levelB": 150, "levelC": 250, "monthlySalary": 60000, "description": "Regional leadership" },
-    { "name": "Regional General Manager", "levelA": 0, "levelB": 400, "levelC": 600, "monthlySalary": 150000, "description": "Top leadership" }
+    {
+      "name": "Trainee Manager",
+      "levelA": 10,
+      "levelB": 0,
+      "levelC": 0,
+      "monthlySalary": 5000,
+      "description": "Basic team leader"
+    },
+    {
+      "name": "Marketing Manager",
+      "levelA": 20,
+      "levelB": 30,
+      "levelC": 0,
+      "monthlySalary": 10000,
+      "description": "Growing team leader"
+    },
+    {
+      "name": "Marketing General Manager",
+      "levelA": 0,
+      "levelB": 50,
+      "levelC": 50,
+      "monthlySalary": 25000,
+      "description": "Senior team leader"
+    },
+    {
+      "name": "Regional Manager",
+      "levelA": 0,
+      "levelB": 150,
+      "levelC": 250,
+      "monthlySalary": 60000,
+      "description": "Regional leadership"
+    },
+    {
+      "name": "Regional General Manager",
+      "levelA": 0,
+      "levelB": 400,
+      "levelC": 600,
+      "monthlySalary": 150000,
+      "description": "Top leadership"
+    }
   ],
   "paymentDay": 1,
   "description": "Salaries are paid on the 1st of each month based on team counts"
