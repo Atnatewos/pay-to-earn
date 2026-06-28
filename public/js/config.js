@@ -1,5 +1,4 @@
 // public/js/config.js
-
 /**
  * APP_CONFIG - Global configuration object
  * All values loaded from server config on startup
@@ -8,13 +7,11 @@
 
 // Default values (overwritten by server config on load)
 const APP_CONFIG = {
-    // API & URLs (auto-detect environment)
-    apiUrl: (window.location.hostname !== 'localhost') 
-        ? 'https://pay-to-earn-api.onrender.com/api' 
-        : '/api',
-    frontendUrl: (window.location.hostname !== 'localhost') 
-        ? 'https://pay-to-earn.vercel.app' 
-        : 'http://localhost:3000',
+    // API & URLs 
+    // Since frontend and backend are on the same domain (Vercel or Localhost), 
+    // we just use relative paths! No need for hardcoded URLs anymore.
+    apiUrl: '/api',
+    frontendUrl: window.location.origin, // Automatically detects localhost or vercel.app
 
     // Platform identity
     name: 'Pay to Earn',

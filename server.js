@@ -206,15 +206,21 @@ app.get('*', function(req, res) {
 
 app.use(errorHandler);
 
-// ============================================================
-// START SERVER
-// ============================================================
+// ==========================================
+// SERVER STARTUP (Adapted for Vercel & Local)
+// ==========================================
 
-app.listen(PORT, function() {
-  console.log('========================================');
-  console.log('  ' + platformConfig.name + ' Server');
-  console.log('  Port: ' + PORT);
-  console.log('  Environment: ' + (process.env.NODE_ENV || 'development'));
-  console.log('  CSP Enabled: ' + (securityConfig.csp.enabled ? 'Yes' : 'No'));
-  console.log('========================================');
-});
+// If running on Vercel, export the app as a serverless function
+if (process.env.VERCEL) {
+    module.exports = app;
+} else {
+    // If running locally or on Render, start the server normally
+    app.listen(PORT, () => {
+        console.log(`========================================`);
+        console.log(`  ${platformConfig.name} Server`);
+        console.log(`  Port: ${PORT}`);
+        console.log(`  Environment: ${process.env.NODE_ENV || 'development'}`);
+        console.log(`  CSP Enabled: ${securityConfig.csp ? securityConfig.csp.enabled : 'No'}`);
+        console.log(`========================================`);
+    });
+}
