@@ -1,50 +1,20 @@
 // public/js/config.js
-/**
- * APP_CONFIG - Global configuration object
- * All values loaded from server config on startup
- * config/platform.json is the SINGLE source of truth
- */
-
-// Default values (overwritten by server config on load)
 const APP_CONFIG = {
-    // API & URLs (auto-detect environment - NO HARDCODED VALUES)
-    // Since frontend and backend are on the same domain (Vercel), use relative paths
     apiUrl: '/api',
     frontendUrl: window.location.origin,
-
-    // Platform identity
     name: 'Pay to Earn',
     fullName: 'Pay to Earn Platform',
     tagline: 'Share & Earn',
     adminName: 'Pay to Earn Admin',
     currency: 'ETB',
     currencySymbol: 'ETB',
-
-    // Logo configuration
-    logo: {
-        imageUrl: '',
-        emoji: '💰',
-        showImage: false,
-        showEmoji: true
-    },
-
-    // Support links
-    support: {
-        telegram: '',
-        telegramChannel: '',
-        telegramGroup: '',
-        email: ''
-    },
-
-    // Bank details
+    logo: { imageUrl: '', emoji: '💰', showImage: false, showEmoji: true },
+    support: { telegram: '', telegramChannel: '', telegramGroup: '', email: '' },
     bankName: 'CBE',
     bankAccount: '1000428407567',
     bankHolder: 'ATNATEWOS'
 };
 
-/**
- * Fetch platform config from server
- */
 async function fetchPlatformConfig() {
     try {
         const response = await fetch(`${APP_CONFIG.apiUrl}/config/platform`);
@@ -60,9 +30,7 @@ async function fetchPlatformConfig() {
             if (c.support) APP_CONFIG.support = c.support;
             document.title = c.fullName || APP_CONFIG.fullName;
         }
-    } catch (e) {
-        // Silently fail and use default fallback values
-    }
+    } catch (e) {}
 }
 
 async function fetchDepositConfig() {
@@ -74,11 +42,8 @@ async function fetchDepositConfig() {
             if (result.data.bankAccount) APP_CONFIG.bankAccount = result.data.bankAccount;
             if (result.data.bankHolder) APP_CONFIG.bankHolder = result.data.bankHolder;
         }
-    } catch (e) {
-        // Silently fail and use default fallback values
-    }
+    } catch (e) {}
 }
 
-// Fetch server configs on load
 fetchPlatformConfig();
 fetchDepositConfig();

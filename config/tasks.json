@@ -1,7 +1,15 @@
 {
   "schedule": {
     "enabled": true,
-    "days": ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"],
+    "days": [
+      "monday",
+      "tuesday",
+      "wednesday",
+      "thursday",
+      "friday",
+      "saturday",
+      "sunday"
+    ],
     "hoursStart": "00:00",
     "hoursEnd": "23:59",
     "timezone": "Africa/Addis_Ababa"
