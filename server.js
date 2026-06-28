@@ -146,7 +146,7 @@ const routes = {
     '/api/salary': './modules/salary/salary.routes',
     '/api/leaderboard': './modules/leaderboard/leaderboard.routes',
     '/api/alerts': './modules/alerts/alerts.routes',
-    '/api/config': './modules/config/config.routes'
+    '/api/config': './modules/config/config.routes'  
 };
 
 Object.keys(routes).forEach(function (routePath) {

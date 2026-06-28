@@ -7,8 +7,8 @@
 
 // Default values (overwritten by server config on load)
 const APP_CONFIG = {
-    // API & URLs (auto-detect environment)
-    // Since frontend and backend are on the same domain, we use relative paths
+    // API & URLs (auto-detect environment - NO HARDCODED VALUES)
+    // Since frontend and backend are on the same domain (Vercel), use relative paths
     apiUrl: '/api',
     frontendUrl: window.location.origin,
 
