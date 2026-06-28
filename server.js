@@ -125,6 +125,16 @@ app.use(express.static(publicPath, {
     }
 }));
 
+// TEMPORARY DEBUG ENDPOINT - DELETE AFTER TESTING
+app.get('/api/debug/env', (req, res) => {
+    res.json({
+        hasDatabaseUrl: !!process.env.DATABASE_URL,
+        hasJwtSecret: !!process.env.JWT_SECRET,
+        nodeEnv: process.env.NODE_ENV,
+        isVercel: !!process.env.VERCEL
+    });
+});
+
 // ============================================================
 // API ROUTES
 // ============================================================
