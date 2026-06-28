@@ -31,33 +31,12 @@
   },
   "csp": {
     "enabled": false,
-    "description": "DISABLED: Frontend contains 161+ inline event handlers (onclick/onchange) which cannot be bypassed via CSP without a massive refactor. Re-enable only after refactoring frontend to use addEventListener().",
-    "allowedScripts": [
-      "'self'",
-      "'unsafe-inline'",
-      "https://telegram.org",
-      "https://api.qrserver.com"
-    ],
-    "allowedStyles": [
-      "'self'",
-      "'unsafe-inline'",
-      "https://fonts.googleapis.com"
-    ],
-    "allowedFonts": [
-      "'self'",
-      "https://fonts.gstatic.com"
-    ],
-    "allowedImages": [
-      "'self'",
-      "data:",
-      "https://api.qrserver.com",
-      "https://roulezelectrique.com",
-      "https:"
-    ],
-    "allowedConnections": [
-      "'self'",
-      "https://api.qrserver.com"
-    ]
+    "description": "DISABLED: Frontend contains inline event handlers",
+    "allowedScripts": ["'self'", "'unsafe-inline'", "https://telegram.org", "https://api.qrserver.com"],
+    "allowedStyles": ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+    "allowedFonts": ["'self'", "https://fonts.gstatic.com"],
+    "allowedImages": ["'self'", "data:", "https://api.qrserver.com", "https://roulezelectrique.com", "https:"],
+    "allowedConnections": ["'self'", "https://api.qrserver.com"]
   },
   "inputSanitization": {
     "stripHtml": true,
