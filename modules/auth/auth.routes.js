@@ -1,11 +1,18 @@
+// modules/auth/auth.routes.js
 const router = require('express').Router();
 const AuthController = require('./auth.controller');
-const { authenticateUser } = require('../../middleware/auth');
-const { authLimiter } = require('../../middleware/rateLimit');
+const { authenticateUser, authenticateAdmin } = require('../../middleware/auth');
 
-router.post('/register', authLimiter, AuthController.register);
-router.post('/login', authLimiter, AuthController.login);
-router.get('/profile', authenticateUser, AuthController.getProfile);
-router.put('/profile', authenticateUser, AuthController.updateProfile);
+// Public routes
+router.post('/login', AuthController.login);
+router.post('/register', AuthController.register);
+
+// Protected routes
+router.get('/me', authenticateUser, AuthController.getCurrentUser);
+router.post('/logout', authenticateUser, AuthController.logout);
+
+// Admin routes
+router.post('/admin/login', AuthController.adminLogin);
+router.get('/admin/me', authenticateAdmin, AuthController.getCurrentAdmin);
 
 module.exports = router;

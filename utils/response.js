@@ -1,15 +1,23 @@
-class Response {
-    static success(res, data = null, message = 'Success', statusCode = 200) {
-        return res.status(statusCode).json({ success: true, message, data });
+// utils/response.js
+/**
+ * Standardized API Response Helper
+ */
+const Response = {
+    success: (res, data, message = 'Success', statusCode = 200) => {
+        return res.status(statusCode).json({
+            success: true,
+            message,
+            data
+        });
+    },
+
+    error: (res, message = 'An error occurred', statusCode = 400, errors = null) => {
+        return res.status(statusCode).json({
+            success: false,
+            message,
+            errors
+        });
     }
-    static error(res, message = 'Something went wrong', statusCode = 500, errors = null) {
-        const response = { success: false, message };
-        if (errors) response.errors = errors;
-        return res.status(statusCode).json(response);
-    }
-    static paginated(res, data, pagination, extra = {}) {
-        return res.status(200).json({ success: true, data, pagination, ...extra });
-    }
-}
+};
 
 module.exports = Response;
