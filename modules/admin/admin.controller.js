@@ -10,6 +10,7 @@ const NotificationsService = require('../notifications/notifications.service');
 const pool = require('../../config/db');
 const bcrypt = require('bcryptjs');
 const permissionsConfig = require('../../config/permissions.json');
+var messagesConfig = require('../../config/messages.json');
 
 class AdminController {
 
@@ -443,9 +444,20 @@ class AdminController {
       await pool.query('UPDATE users SET status = $1 WHERE id = $2', [status, req.params.id]);
       await pool.query('INSERT INTO user_suspension_history (user_id, phone, action, reason, admin_id) VALUES ($1,$2,$3,$4,$5)', [req.params.id, phone, action, reason, req.admin.id]);
       await pool.query('INSERT INTO user_activity_log (user_id, phone, action, field_name, old_value, new_value, changed_by, ip_address) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)', [req.params.id, phone, 'user_' + action, 'status', 'active', status, req.admin.id, req.ip]);
-      var alertTitle = action === 'ban' ? 'Account Banned' : 'Account Suspended';
-      var alertMessage = action === 'ban' ? 'Your account has been permanently banned. Reason: ' + (reason || 'Violation of terms') : 'Your account has been suspended. Reason: ' + (reason || 'Violation of terms');
-      await pool.query('INSERT INTO user_alerts (user_id, title, message, type, icon, color, sent_by) VALUES ($1,$2,$3,$4,$5,$6,$7)', [req.params.id, alertTitle, alertMessage, 'danger', '🚫', 'color-danger', req.admin.id]);
+      
+      var defaultReason = action === 'ban'
+        ? messagesConfig.admin.defaultBanReason
+        : messagesConfig.admin.defaultSuspendReason;
+
+      var alertTitle = action === 'ban'
+        ? messagesConfig.suspension.bannedTitle
+        : messagesConfig.suspension.suspendedTitle;
+
+      var alertMessage = action === 'ban'
+        ? messagesConfig.suspension.banned.replace('{reason}', reason || defaultReason)
+        : messagesConfig.suspension.suspended.replace('{reason}', reason || defaultReason);
+
+      await pool.query('INSERT INTO user_alerts (user_id, title, message, type, icon, color, sent_by) VALUES ($1,$2,$3,$4,$5,$6,$7)', [req.params.id, alertTitle, alertMessage, 'danger', '🛑', 'color-danger', req.admin.id]);
       await NotificationsService.create(req.params.id, alertTitle, alertMessage, 'system');
       return res.json({ success: true, message: 'User ' + action + 'ed' });
     } catch (error) {
@@ -467,13 +479,20 @@ class AdminController {
   async warnUser(req, res) {
     try {
       var reason = req.body.reason;
-      var user = await pool.query('SELECT phone, full_name FROM users WHERE id = $1', [req.params.id]);
+      var user = await pool.query('SELECT phone, full_name, warning_count FROM users WHERE id = $1', [req.params.id]);
       var phone = user.rows[0] ? user.rows[0].phone : null;
       await pool.query('UPDATE users SET warning_count = COALESCE(warning_count, 0) + 1 WHERE id = $1', [req.params.id]);
       await pool.query('INSERT INTO user_suspension_history (user_id, phone, action, reason, admin_id) VALUES ($1,$2,$3,$4,$5)', [req.params.id, phone, 'warning', reason, req.admin.id]);
       await pool.query('INSERT INTO user_activity_log (user_id, phone, action, field_name, old_value, new_value, changed_by, ip_address) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)', [req.params.id, phone, 'warning_sent', 'warning', '', reason, req.admin.id, req.ip]);
-      await pool.query("INSERT INTO user_alerts (user_id, title, message, type, icon, color, sent_by, is_dismissed) VALUES ($1,$2,$3,$4,$5,$6,$7,FALSE)", [req.params.id, 'Warning Received', 'Reason: ' + (reason || 'Policy violation'), 'warning', '⚡', 'color-warning', req.admin.id]);
-      await NotificationsService.create(req.params.id, 'Warning', 'You received a warning. Reason: ' + reason, 'system');
+      
+      var warnReason = reason || messagesConfig.admin.defaultWarnReason;
+      var warnTitle = messagesConfig.warning.title;
+      var warnMessage = messagesConfig.warning.received
+        .replace('{reason}', warnReason)
+        .replace('{count}', ((user.rows[0] && user.rows[0].warning_count) || 0) + 1);
+
+      await pool.query("INSERT INTO user_alerts (user_id, title, message, type, icon, color, sent_by, is_dismissed) VALUES ($1,$2,$3,$4,$5,$6,$7,FALSE)", [req.params.id, warnTitle, warnMessage, 'warning', '⚠️', 'color-warning', req.admin.id]);
+      await NotificationsService.create(req.params.id, 'Warning', 'You received a warning. Reason: ' + warnReason, 'system');
       return res.json({ success: true, message: 'Warning sent to user' });
     } catch (error) {
       return res.json({ success: false, message: 'Failed to send warning' });
@@ -650,6 +669,10 @@ class AdminController {
       if (packageName === 'none') {
         await pool.query('UPDATE users SET active_package = NULL, package_expiry = NULL WHERE id = $1', [userId]);
         await pool.query('UPDATE user_packages SET is_active = FALSE WHERE user_id = $1', [userId]);
+        
+        // Dynamic notification message for package removal
+        await NotificationsService.create(userId, 'Package Updates', messagesConfig.admin.packageRemoved, 'system');
+        
         return res.json({ success: true, message: 'Package removed' });
       }
       var pkg = await pool.query('SELECT * FROM packages WHERE name = $1', [packageName]);
@@ -657,6 +680,10 @@ class AdminController {
       await pool.query('UPDATE user_packages SET is_active = FALSE WHERE user_id = $1', [userId]);
       await pool.query("INSERT INTO user_packages (user_id, package_name, deposit_amount, started_at, expires_at) VALUES ($1,$2,$3,CURRENT_DATE,CURRENT_DATE + INTERVAL '30 days')", [userId, packageName, pkg.rows[0].deposit_amount]);
       await pool.query("UPDATE users SET active_package = $1, package_expiry = CURRENT_DATE + INTERVAL '30 days' WHERE id = $2", [packageName, userId]);
+      
+      // Dynamic notification message for levels changed
+      await NotificationsService.create(userId, 'Package Updates', messagesConfig.admin.levelChanged.replace('{package}', packageName), 'system');
+
       return res.json({ success: true, message: 'Package changed to ' + packageName });
     } catch (error) {
       return res.json({ success: false, message: 'Failed to change package' });
@@ -670,7 +697,12 @@ class AdminController {
       var userId = req.params.id;
       if (!amount || amount <= 0) return res.json({ success: false, message: 'Invalid amount' });
       var MoneyService = require('../money/money.service');
-      await MoneyService.credit(userId, amount, 'earnings', 'admin_gift', reason || 'Admin bonus');
+      
+      var customBonusReason = messagesConfig.admin.moneyAdded
+        .replace('{amount}', amount.toLocaleString())
+        .replace('{reason}', reason || 'Admin bonus');
+
+      await MoneyService.credit(userId, amount, 'earnings', 'admin_gift', customBonusReason);
       return res.json({ success: true, message: amount + ' ETB added to user earnings' });
     } catch (error) {
       return res.json({ success: false, message: 'Failed to add money' });

@@ -1,6 +1,7 @@
 // modules/giftcodes/giftcodes.service.js
 const pool = require('../../config/db');
 const MoneyService = require('../money/money.service');
+var messagesConfig = require('../../config/messages.json');
 
 class GiftCodeService {
     async createCode(adminId, amount, maxUses = 1, expiresAt = null) {
@@ -8,7 +9,7 @@ class GiftCodeService {
 
         const result = await pool.query(
             'INSERT INTO gift_codes (code, amount, max_uses, created_by, expires_at) VALUES ($1, $2, $3, $4, $5) RETURNING id',
-            [code, amount, maxUses, adminId, expiresAt]
+            [code, amount, maxUses, adminId, expiresAt]\r
         );
 
         return {
@@ -37,64 +38,65 @@ class GiftCodeService {
         return code;
     }
 
-    async redeemCode(userId, code) {
+    async redeemCode(userId, inputCode) {
         const client = await pool.connect();
-
         try {
             await client.query('BEGIN');
 
-            // Find the gift code
+            // 1. Fetch code and check active status
             const codeResult = await client.query(
-                'SELECT * FROM gift_codes WHERE code = $1 AND is_active = TRUE',
-                [code]
+                'SELECT * FROM gift_codes WHERE code = $1 FOR UPDATE',
+                [inputCode.trim().toUpperCase()]
             );
 
-            if (codeResult.rows.length === 0) {
-                throw new Error('Invalid or expired gift code');
+            if (codeResult.rows.length === 0 || !codeResult.rows[0].is_active) {
+                throw new Error(messagesConfig.giftCode.invalid);
             }
 
             const giftCode = codeResult.rows[0];
 
-            // Check if code has expired
+            // 2. Check system expiry date
             if (giftCode.expires_at && new Date(giftCode.expires_at) < new Date()) {
-                throw new Error('This gift code has expired');
+                // Instantly deactivate if checked after expiry boundary
+                await client.query('UPDATE gift_codes SET is_active = FALSE WHERE id = $1', [giftCode.id]);
+                throw new Error(messagesConfig.giftCode.expired);
             }
 
-            // Check if code has reached max uses
+            // 3. Check allocation usage counts
             if (giftCode.times_used >= giftCode.max_uses) {
-                throw new Error('This gift code has reached its maximum uses');
+                throw new Error(messagesConfig.giftCode.maxUses);
             }
 
-            // Check if user already redeemed this code
-            const existingResult = await client.query(
-                'SELECT id FROM gift_code_redemptions WHERE gift_code_id = $1 AND user_id = $2',
-                [giftCode.id, userId]
+            // 4. Prevent users from duplicating redemptions on single instances
+            const usageCheck = await client.query(
+                'SELECT id FROM gift_code_usages WHERE user_id = $1 AND gift_code_id = $2',
+                [userId, giftCode.id]
             );
 
-            if (existingResult.rows.length > 0) {
-                throw new Error('You have already redeemed this code');
+            if (usageCheck.rows.length > 0) {
+                throw new Error(messagesConfig.giftCode.alreadyRedeemed);
             }
 
-            // Credit to user's EARNINGS via MoneyService (handles balance + transaction)
-            await MoneyService.credit(
-                userId, 
-                giftCode.amount, 
-                'earnings', 
-                'gift_code', 
-                'Gift code redeemed', 
-                giftCode.id
+            // 5. Append lookup usage audit log row
+            await client.query(
+                'INSERT INTO gift_code_usages (user_id, gift_code_id) VALUES ($1, $2)',
+                [userId, giftCode.id]
             );
 
-            // Record the redemption
+            // 6. Increment internal sequence pointer counter logs
             await client.query(
-                'INSERT INTO gift_code_redemptions (gift_code_id, user_id, amount_received) VALUES ($1, $2, $3)',
-                [giftCode.id, userId, giftCode.amount]
-            );
-
-            // Update usage count
-            await client.query(
-                'UPDATE gift_codes SET times_used = times_used + 1 WHERE id = $1',
+                'UPDATE gift_codes SET times_used = times_used + 1, updated_at = NOW() WHERE id = $1',
                 [giftCode.id]
+            );
+
+            // 7. Credit amount to earnings account balance instance via standard ledger rules
+            await MoneyService.credit(
+                userId,
+                parseFloat(giftCode.amount),
+                'earnings',
+                'gift_code',
+                `Redeemed bonus coupon promotional code string layout: ${giftCode.code}`,
+                giftCode.id
             );
 
             // Deactivate if max uses reached
@@ -110,7 +112,7 @@ class GiftCodeService {
             return {
                 success: true,
                 amount: giftCode.amount,
-                message: `Successfully redeemed ${giftCode.amount} ETB!`
+                message: messagesConfig.giftCode.redeemed.replace('{amount}', giftCode.amount)
             };
 
         } catch (error) {
@@ -125,7 +127,7 @@ class GiftCodeService {
         const offset = (page - 1) * limit;
         const result = await pool.query(
             'SELECT * FROM gift_codes WHERE created_by = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3',
-            [adminId, limit, offset]
+            [adminId, limit, offset]\r
         );
         return result.rows;
     }
@@ -136,8 +138,7 @@ class GiftCodeService {
             `SELECT gc.*, a.username as created_by_name 
              FROM gift_codes gc 
              JOIN admins a ON gc.created_by = a.id 
-             ORDER BY gc.created_at DESC 
-             LIMIT $1 OFFSET $2`,
+             ORDER BY gc.created_at DESC LIMIT $1 OFFSET $2`,
             [limit, offset]
         );
         return result.rows;

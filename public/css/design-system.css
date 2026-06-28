@@ -1228,3 +1228,234 @@ body.telegram-mini-app .bottom-nav {
 .border-bottom-3 {
   border-bottom: 3px solid;
 }
+
+/* Add to public/css/design-system.css */
+
+/* ============================================
+   BATCH 1: CSS UTILITY CLASSES
+   Replace ALL inline styles in JavaScript files
+   ============================================ */
+
+/* Modal size variants */
+.modal-sm { max-width: 380px; }
+.modal-md { max-width: 420px; }
+.modal-lg { max-width: 500px; }
+.modal-xl { max-width: 600px; }
+.modal-xxl { max-width: 550px; }
+.modal-auto { max-width: 90%; width: 90%; }
+
+/* Grid template columns for admin tables */
+.grid-cols-users { grid-template-columns: 50px 1fr 100px 100px 80px 60px; }
+.grid-cols-admins { grid-template-columns: 1fr 120px 100px 120px 120px; }
+.grid-cols-logs { grid-template-columns: 160px 180px 1fr 120px 160px; }
+.grid-cols-salaries { grid-template-columns: 1fr 100px 100px 100px 120px; }
+
+/* Skeleton loader sizes */
+.skeleton-sm { height: 24px; width: 100px; margin-bottom: 8px; }
+.skeleton-md { height: 36px; width: 80px; border-radius: 8px; }
+.skeleton-lg { height: 48px; width: 200px; margin-bottom: 16px; }
+.skeleton-xl { height: 100px; }
+.skeleton-hero { height: 300px; }
+.skeleton-full { height: 100px; margin-bottom: 16px; }
+.skeleton-full-lg { height: 150px; margin-bottom: 16px; }
+
+/* Animation delay utilities */
+.delay-02 { animation-delay: 0.02s; }
+.delay-03 { animation-delay: 0.03s; }
+.delay-04 { animation-delay: 0.04s; }
+.delay-05 { animation-delay: 0.05s; }
+
+/* Tab visibility */
+.tab-visible { display: block; }
+.tab-hidden { display: none; }
+
+/* List item icon background colors */
+.icon-bg-pink { background: #FFF0F6; }
+.icon-bg-cyan { background: #F0FCFC; }
+.icon-bg-yellow { background: #FFF8E1; }
+.icon-bg-purple { background: #F4F2FF; }
+.icon-bg-green { background: #E6F9F4; }
+.icon-bg-red { background: #FFF5F5; }
+.icon-bg-light-yellow { background: #FFF8E1; }
+.icon-bg-light-red { background: #FFF0F0; }
+.icon-bg-package-active { background: var(--color-success-bg); }
+.icon-bg-package-inactive { background: var(--color-surface-hover); }
+
+/* Fixed heights */
+.max-h-55vh { max-height: 55vh; }
+.max-h-85vh { max-height: 85vh; }
+.max-h-90vh { max-height: 90vh; }
+
+/* Overflow */
+.overflow-y-auto { overflow-y: auto; }
+
+/* Text styles */
+.text-monospace { font-family: monospace; letter-spacing: 1px; }
+.text-spaced { letter-spacing: 2px; }
+.text-uppercase { text-transform: uppercase; }
+
+/* Sticky header */
+.sticky-top-white {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: white;
+}
+
+/* Skeleton background */
+.skeleton-bg-white {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Progress fill */
+.progress-fill-white {
+  background: rgba(255, 255, 255, 0.8);
+}
+
+/* Modal with text center */
+.modal-text-center {
+  text-align: center;
+}
+
+/* Input readonly style */
+.input-readonly {
+  opacity: 0.7;
+}
+
+/* Cursor default */
+.cursor-default {
+  cursor: default;
+}
+
+/* Button opacity */
+.btn-opacity-80 {
+  opacity: 0.8;
+}
+
+/* Flex with gap */
+.flex-gap-10 {
+  display: flex;
+  gap: 10px;
+}
+
+/* Margin top */
+.mt-10 {
+  margin-top: 10px;
+}
+
+/* Margin top 3 */
+.mt-3 {
+  margin-top: var(--space-3);
+}
+
+/* Badge margin left */
+.badge-ml-1 {
+  margin-left: var(--space-1);
+}
+
+/* Border radius for images */
+.img-rounded {
+  border-radius: 12px;
+}
+
+/* Max width for images */
+.img-max-180 {
+  max-width: 180px;
+}
+
+.img-max-200 {
+  max-width: 200px;
+}
+
+/* Level border */
+.border-level-active {
+  border: 2px solid var(--color-primary);
+}
+
+/* History list border */
+.border-left-history-ban {
+  border-left: 3px solid var(--color-danger);
+}
+
+.border-left-history-warning {
+  border-left: 3px solid var(--color-warning);
+}
+
+.border-left-history-info {
+  border-left: 3px solid var(--color-info);
+}
+
+/* Permission category header */
+.permission-category-header {
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+/* Permission item title */
+.permission-item-title {
+  font-size: 14px;
+}
+
+/* Auth icon warm gradient */
+.auth-icon-warm {
+  background: linear-gradient(135deg, #FD79A8, #FDCB6E);
+}
+
+/* Transaction type backgrounds */
+.tx-credit-bg {
+  background: var(--color-success-bg);
+}
+
+.tx-debit-bg {
+  background: var(--color-danger-bg);
+}
+
+/* Quick action icon */
+.quick-action-icon-ranks {
+  background: #FFF8E1;
+}
+
+/* Navbar logo link */
+.navbar-logo-link {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+}
+
+.navbar-logo-img {
+  height: 36px;
+  width: auto;
+  object-fit: contain;
+}
+
+.navbar-logo-emoji {
+  display: none;
+  font-size: 24px;
+}
+
+.navbar-logo-emoji-only {
+  cursor: pointer;
+  text-decoration: none;
+  font-size: 28px;
+}
+
+/* Navbar brand link */
+.navbar-brand-link {
+  cursor: pointer;
+}
+
+/* Support card cursor */
+.support-card {
+  cursor: pointer;
+}
+
+/* Profile header cursor */
+.profile-header-clickable {
+  cursor: pointer;
+}
+
+/* Package card success button */
+.package-btn-current {
+  cursor: default;
+  opacity: 0.8;
+}

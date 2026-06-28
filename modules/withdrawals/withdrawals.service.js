@@ -5,6 +5,7 @@ const NotificationsService = require('../notifications/notifications.service');
 
 // ============ CONFIG FILES ============
 const withdrawalConfig = require('../../config/withdrawal.json');
+var messagesConfig = require('../../config/messages.json');
 
 class WithdrawalsService {
 
@@ -14,7 +15,7 @@ class WithdrawalsService {
     checkSchedule() {
         const schedule = withdrawalConfig.schedule;
         if (!schedule.enabled) {
-            return { allowed: false, message: 'Withdrawals are currently disabled.' };
+            return { allowed: false, message: messagesConfig.withdrawal.scheduleDisabled };
         }
         const now = new Date();
         const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
@@ -37,7 +38,7 @@ class WithdrawalsService {
      */
     getScheduleDescription() {
         const schedule = withdrawalConfig.schedule;
-        if (!schedule.enabled) return 'Withdrawals are currently disabled.';
+        if (!schedule.enabled) return messagesConfig.withdrawal.scheduleDisabled;
         const days = schedule.days.map(d => d.charAt(0).toUpperCase() + d.slice(1, 3)).join(', ');
         return `Withdrawals available ${days} from ${schedule.hoursStart} to ${schedule.hoursEnd}. Processing: ${withdrawalConfig.processingTime}`;
     }
@@ -54,7 +55,7 @@ class WithdrawalsService {
             // Password validation from config
             if (withdrawalConfig.requirePassword) {
                 if (!password || password.trim() === '') {
-                    throw new Error('Password is required for withdrawal');
+                    throw new Error(messagesConfig.withdrawal.passwordRequired);
                 }
                 const userCheck = await client.query(
                     'SELECT password_hash FROM users WHERE id = $1',
@@ -62,13 +63,13 @@ class WithdrawalsService {
                 );
                 if (userCheck.rows.length === 0) throw new Error('User not found');
                 const valid = await bcrypt.compare(password.trim(), userCheck.rows[0].password_hash);
-                if (!valid) throw new Error('Incorrect password');
+                if (!valid) throw new Error(messagesConfig.withdrawal.incorrectPassword);
             }
 
             // Validate amount from config
             const fixedAmounts = withdrawalConfig.fixedAmounts || [300, 1000, 4000, 10000, 25000, 50000, 100000];
             if (!fixedAmounts.includes(parseInt(amount))) {
-                throw new Error(`Withdrawal amount must be one of: ${fixedAmounts.join(', ')} ETB`);
+                throw new Error(messagesConfig.withdrawal.amountNotAllowed.replace('{amounts}', fixedAmounts.join(', ')));
             }
 
             // Check earnings balance (cannot withdraw capital)
@@ -80,9 +81,7 @@ class WithdrawalsService {
             const earningsBalance = parseFloat(user.earnings_balance || 0);
 
             if (earningsBalance < amount) {
-                throw new Error(
-                    `Insufficient earnings. Available: ${earningsBalance.toLocaleString()} ETB. Capital is locked.`
-                );
+                throw new Error(messagesConfig.withdrawal.insufficientEarnings.replace('{available}', earningsBalance.toLocaleString()));
             }
 
             // Verify bank account
@@ -144,7 +143,7 @@ class WithdrawalsService {
 
                 await client.query(
                     'INSERT INTO user_alerts (user_id, title, message, type, icon, color, sent_by) VALUES ($1, $2, $3, $4, $5, $6, $7)',
-                    [withdrawal.user_id, '🎉 Withdrawal Approved!', `Your withdrawal of ${withdrawal.amount.toLocaleString()} ETB has been approved.`, 'success', '🎊', 'gradient-accent', adminId]
+                    [withdrawal.user_id, messagesConfig.withdrawal.approvedAlertTitle, messagesConfig.withdrawal.approved.replace('{amount}', withdrawal.amount.toLocaleString()), 'success', '🎊', 'gradient-accent', adminId]
                 );
                 await NotificationsService.create(
                     withdrawal.user_id,
@@ -172,7 +171,7 @@ class WithdrawalsService {
 
                 await client.query(
                     'INSERT INTO user_alerts (user_id, title, message, type, icon, color, sent_by) VALUES ($1, $2, $3, $4, $5, $6, $7)',
-                    [withdrawal.user_id, '❌ Withdrawal Rejected', `Your withdrawal of ${withdrawal.amount.toLocaleString()} ETB was rejected. Reason: ${reason}. Amount refunded.`, 'danger', '❌', 'color-danger', adminId]
+                    [withdrawal.user_id, messagesConfig.withdrawal.rejectedAlertTitle, messagesConfig.withdrawal.rejected.replace('{amount}', withdrawal.amount.toLocaleString()).replace('{reason}', reason), 'danger', '❌', 'color-danger', adminId]
                 );
                 await NotificationsService.create(
                     withdrawal.user_id,

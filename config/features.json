@@ -1,50 +1,14 @@
 {
-  "registration": {
-    "enabled": true,
-    "description": "Allow new user registration"
-  },
-  "tasks": {
-    "enabled": true,
-    "description": "Enable task system"
-  },
-  "deposits": {
-    "enabled": true,
-    "description": "Enable deposit system"
-  },
-  "withdrawals": {
-    "enabled": true,
-    "description": "Enable withdrawal system"
-  },
-  "commissions": {
-    "enabled": true,
-    "description": "Enable commission distribution"
-  },
-  "referrals": {
-    "enabled": true,
-    "description": "Enable referral system"
-  },
-  "giftCodes": {
-    "enabled": true,
-    "description": "Enable gift code redemption"
-  },
-  "leaderboard": {
-    "enabled": true,
-    "description": "Enable leaderboard display"
-  },
-  "broadcasts": {
-    "enabled": true,
-    "description": "Enable broadcast messages"
-  },
-  "managerSalaries": {
-    "enabled": true,
-    "description": "Enable manager salary system"
-  },
-  "notifications": {
-    "enabled": true,
-    "description": "Enable notification system"
-  },
-  "alerts": {
-    "enabled": true,
-    "description": "Enable popup alert system"
-  }
+  "registration": { "enabled": true, "description": "Allow new user registration" },
+  "tasks": { "enabled": true, "description": "Enable task system" },
+  "deposits": { "enabled": true, "description": "Enable deposit system" },
+  "withdrawals": { "enabled": true, "description": "Enable withdrawal system" },
+  "commissions": { "enabled": true, "description": "Enable commission distribution" },
+  "referrals": { "enabled": true, "description": "Enable referral system" },
+  "giftCodes": { "enabled": true, "description": "Enable gift code redemption" },
+  "leaderboard": { "enabled": true, "description": "Enable leaderboard display" },
+  "broadcasts": { "enabled": true, "description": "Enable broadcast messages" },
+  "managerSalaries": { "enabled": true, "description": "Enable manager salary system" },
+  "notifications": { "enabled": true, "description": "Enable notification system" },
+  "alerts": { "enabled": true, "description": "Enable popup alert system" }
 }

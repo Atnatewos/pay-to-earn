@@ -31,7 +31,7 @@ DepositsService.prototype.checkSchedule = function() {
   if (!schedule || !schedule.enabled) {
     return {
       allowed: false,
-      message: 'Deposits are currently disabled.'
+      message: messagesConfig.deposit.scheduleDisabled
     };
   }
 
@@ -46,8 +46,9 @@ DepositsService.prototype.checkSchedule = function() {
 
     return {
       allowed: false,
-      message: 'Deposits are only available on: ' + availableDays + '. Today is ' +
-        todayName.charAt(0).toUpperCase() + todayName.slice(1) + '.'
+      message: messagesConfig.deposit.scheduleDayOff
+        .replace('{days}', availableDays)
+        .replace('{today}', todayName.charAt(0).toUpperCase() + todayName.slice(1))
     };
   }
 
@@ -60,7 +61,9 @@ DepositsService.prototype.checkSchedule = function() {
   if (currentMinutes < startMinutes || currentMinutes > endMinutes) {
     return {
       allowed: false,
-      message: 'Deposits are available from ' + schedule.hoursStart + ' to ' + schedule.hoursEnd + '.'
+      message: messagesConfig.deposit.scheduleHoursOff
+        .replace('{start}', schedule.hoursStart)
+        .replace('{end}', schedule.hoursEnd)
     };
   }
 
@@ -93,7 +96,7 @@ DepositsService.prototype.checkTransactionId = function(transactionId, userId) {
       return {
         used: true,
         status: 'verified',
-        message: 'This transaction ID has already been verified and credited. Each bank transfer can only be used once.'
+        message: messagesConfig.deposit.duplicateVerified
       };
     }
 
@@ -104,8 +107,8 @@ DepositsService.prototype.checkTransactionId = function(transactionId, userId) {
         status: 'pending',
         isSameUser: isSameUser,
         message: isSameUser
-          ? 'You have already submitted this transaction ID. It is pending verification. Please wait or contact support.'
-          : 'This transaction ID has already been submitted by another user.'
+          ? messagesConfig.deposit.duplicatePendingSelf
+          : messagesConfig.deposit.duplicatePendingOther
       };
     }
 
@@ -115,7 +118,7 @@ DepositsService.prototype.checkTransactionId = function(transactionId, userId) {
         used: true,
         status: 'rejected',
         isSameUser: isSameUser,
-        message: 'This transaction ID was previously rejected. Please contact an admin to unblock it before resubmitting.'
+        message: messagesConfig.deposit.duplicateRejected
       };
     }
 
@@ -126,7 +129,7 @@ DepositsService.prototype.checkTransactionId = function(transactionId, userId) {
 
     return {
       used: true,
-      message: 'This transaction ID cannot be used. Please contact support.'
+      message: messagesConfig.deposit.duplicateUnknown
     };
   });
 };
@@ -155,8 +158,9 @@ DepositsService.prototype.createDeposit = function(userId, amount, bankName, tra
 
   if (!amount || amount < minimumAmount || amount > maximumAmount) {
     return Promise.reject(new Error(
-      'Deposit amount must be between ' + minimumAmount.toLocaleString() +
-      ' and ' + maximumAmount.toLocaleString() + ' ETB.'
+      messagesConfig.deposit.amountLimits
+        .replace('{min}', minimumAmount.toLocaleString())
+        .replace('{max}', maximumAmount.toLocaleString())
     ));
   }
 
@@ -240,7 +244,7 @@ DepositsService.prototype.unblockTransactionId = function(depositId, adminId) {
     .then(function() {
       return {
         success: true,
-        message: 'Transaction ID has been unblocked. The user can now resubmit their deposit.'
+        message: messagesConfig.deposit.unblocked
       };
     })
     .catch(function(error) {
@@ -350,7 +354,7 @@ DepositsService.prototype.verifyDeposit = function(depositId, adminId) {
     .then(function() {
       return {
         success: true,
-        message: 'Deposit verified successfully. Package activated and commissions distributed.'
+        message: messagesConfig.deposit.verifiedSuccess
       };
     })
     .catch(function(error) {
@@ -465,11 +469,11 @@ DepositsService.prototype.rejectDeposit = function(depositId, adminId, reason) {
         'deposit',
         depositId
       ).then(function() {
-        return { success: true, message: 'Deposit rejected.' };
+        return { success: true, message: messagesConfig.deposit.rejectedSuccess };
       });
     }
 
-    return { success: true, message: 'Deposit rejected.' };
+    return { success: true, message: messagesConfig.deposit.rejectedSuccess };
   });
 };
 

@@ -1,21 +1,20 @@
 {
-    "schedule": {
-        "enabled": true,
-        "days": ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"],
-        "hoursStart": "00:00",
-        "hoursEnd": "23:59",
-        "timezone": "Africa/Addis_Ababa"
-    },
-    "instructions": [
-        "Click \"Start Task\"",
-        "Solve the captcha challenge",
-        "Watch a short video",
-        "Confirm with another captcha",
-        "Earn ETB instantly!"
-  
-    ],
-    "videoDuration": 10,
-    "maxTasksPerDay": 20,
-    "maxIncomePerTask": 1000,
-    "description": "Tasks are available {days} from {start} to {end}"
+  "schedule": {
+    "enabled": true,
+    "days": ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"],
+    "hoursStart": "00:00",
+    "hoursEnd": "23:59",
+    "timezone": "Africa/Addis_Ababa"
+  },
+  "instructions": [
+    "Click \"Start Task\"",
+    "Solve the captcha challenge",
+    "Watch a short video",
+    "Confirm with another captcha",
+    "Earn ETB instantly!"
+  ],
+  "videoDuration": 10,
+  "maxTasksPerDay": 20,
+  "maxIncomePerTask": 1000,
+  "description": "Tasks are available {days} from {start} to {end}"
 }

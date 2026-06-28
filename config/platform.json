@@ -1,25 +1,23 @@
 {
-    "name": "PONZI",
-    "fullName": "PONZI Earn Platform",
-    "tagline": "Share & Earn",
-    "adminName": "PONZI Admin",
-    "currency": "ETB",
-    "currencySymbol": "ETB",
-    "website": "https://pay-to-earn.vercel.app",
-    
-    "logo": {
-        "imageUrl": "https://roulezelectrique.com/wp-content/uploads/2021/11/unnamed-1024x471.png",
-        "emoji": "💰",
-        "showImage": true,
-        "showEmoji": false
-    },
-    
-    "support": {
-        "telegram": "https://t.me/YourSupportUsername",
-        "telegramChannel": "https://t.me/YourChannel",
-        "telegramGroup": "https://t.me/YourGroup",
-        "email": "support@paytoearn.com",
-        "showInNavbar": true,
-        "showInFooter": true
-    }
+  "name": "PONZI",
+  "fullName": "PONZI Earn Platform",
+  "tagline": "Share & Earn",
+  "adminName": "PONZI Admin",
+  "currency": "ETB",
+  "currencySymbol": "ETB",
+  "website": "https://pay-to-earn.vercel.app",
+  "logo": {
+    "imageUrl": "https://roulezelectrique.com/wp-content/uploads/2021/11/unnamed-1024x471.png",
+    "emoji": "💰",
+    "showImage": true,
+    "showEmoji": false
+  },
+  "support": {
+    "telegram": "https://t.me/YourSupportUsername",
+    "telegramChannel": "https://t.me/YourChannel",
+    "telegramGroup": "https://t.me/YourGroup",
+    "email": "support@paytoearn.com",
+    "showInNavbar": true,
+    "showInFooter": true
+  }
 }

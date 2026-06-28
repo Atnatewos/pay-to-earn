@@ -1,3 +1,4 @@
+// modules/giftcodes/giftcodes.routes.js
 const router = require('express').Router();
 const GiftCodeService = require('./giftcodes.service');
 const Response = require('../../utils/response');
@@ -13,7 +14,7 @@ router.post('/redeem', authenticateUser, async (req, res, next) => {
     } catch (error) { return Response.error(res, error.message, 400); }
 });
 
-router.post('/create', authenticateAdmin, requirePermission('system.features'), async (req, res, next) => {
+router.post('/create', authenticateAdmin, requirePermission('giftcodes.create'), async (req, res, next) => {
     try {
         const { amount, maxUses = 1, expiresAt } = req.body;
         if (!amount || amount <= 0) return Response.error(res, 'Valid amount required', 400);

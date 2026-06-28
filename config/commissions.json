@@ -1,38 +1,13 @@
-
 {
-    "referral": {
-        "level1": {
-            "percentage": 10,
-            "rate": 0.10,
-            "description": "Direct referral commission on deposits"
-        },
-        "level2": {
-            "percentage": 3,
-            "rate": 0.03,
-            "description": "Level 2 referral commission on deposits"
-        },
-        "level3": {
-            "percentage": 1,
-            "rate": 0.01,
-            "description": "Level 3 referral commission on deposits"
-        }
-    },
-    "task": {
-        "level1": {
-            "percentage": 5,
-            "rate": 0.05,
-            "description": "Direct referral commission on task earnings"
-        },
-        "level2": {
-            "percentage": 2,
-            "rate": 0.02,
-            "description": "Level 2 commission on task earnings"
-        },
-        "level3": {
-            "percentage": 1,
-            "rate": 0.01,
-            "description": "Level 3 commission on task earnings"
-        }
-    },
-    "maxLevels": 3
+  "referral": {
+    "level1": { "percentage": 10, "rate": 0.10, "description": "Direct referral commission on deposits" },
+    "level2": { "percentage": 3, "rate": 0.03, "description": "Level 2 referral commission on deposits" },
+    "level3": { "percentage": 1, "rate": 0.01, "description": "Level 3 referral commission on deposits" }
+  },
+  "task": {
+    "level1": { "percentage": 5, "rate": 0.05, "description": "Direct referral commission on task earnings" },
+    "level2": { "percentage": 2, "rate": 0.02, "description": "Level 2 commission on task earnings" },
+    "level3": { "percentage": 1, "rate": 0.01, "description": "Level 3 commission on task earnings" }
+  },
+  "maxLevels": 3
 }

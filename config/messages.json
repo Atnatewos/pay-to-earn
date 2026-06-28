@@ -2,30 +2,106 @@
   "deposit": {
     "verified": "Your deposit of {amount} ETB has been verified and added to your capital. Your package is now active.",
     "rejected": "Your deposit of {amount} ETB was rejected. Reason: {reason}",
-    "pending": "Your deposit of {amount} ETB is pending verification. We will review it within 24 hours."
+    "pending": "Your deposit of {amount} ETB is pending verification. We will review it within 24 hours.",
+    "scheduleDisabled": "Deposits are currently disabled.",
+    "scheduleDayOff": "Deposits are only available on {days}. Today is {today}.",
+    "scheduleHoursOff": "Deposits are available from {start} to {end}.",
+    "amountLimits": "Deposit amount must be between {min} and {max} ETB.",
+    "duplicateVerified": "This transaction ID has already been verified and credited. Each bank transfer can only be used once.",
+    "duplicatePendingSelf": "You have already submitted this transaction ID. It is pending verification. Please wait or contact support.",
+    "duplicatePendingOther": "This transaction ID has already been submitted by another user.",
+    "duplicateRejected": "This transaction ID was previously rejected. Please contact an admin to unblock it before resubmitting.",
+    "duplicateUnknown": "This transaction ID cannot be used. Please contact support.",
+    "notFound": "Deposit not found or it has already been processed.",
+    "notRejected": "Deposit not found or it is not in rejected status.",
+    "unblocked": "Transaction ID has been unblocked. The user can now resubmit their deposit.",
+    "verifiedSuccess": "Deposit verified successfully. Package activated and commissions distributed.",
+    "rejectedSuccess": "Deposit rejected."
   },
   "withdrawal": {
     "approved": "Your withdrawal of {amount} ETB has been approved and sent to your bank account.",
     "rejected": "Your withdrawal of {amount} ETB was rejected. Reason: {reason}. Amount has been refunded to your balance.",
-    "pending": "Your withdrawal request for {amount} ETB is being processed. You will receive your funds within 24-48 hours."
-  },
-  "suspension": {
-    "banned": "Your account has been permanently banned. Reason: {reason}. You cannot register again with this phone number.",
-    "suspended": "Your account has been suspended. Reason: {reason}. Please contact support for assistance."
-  },
-  "warning": {
-    "received": "You have received a warning. Reason: {reason}. This is warning #{count}. Continued violations may result in account suspension."
-  },
-  "admin": {
-    "defaultSuspendReason": "Admin action",
-    "defaultWarnReason": "Policy violation"
-  },
-  "commission": {
-    "referralReceived": "You received {amount} ETB from a Level {level} referral deposit.",
-    "taskReceived": "You earned {amount} ETB from a Level {level} team member's task."
+    "pending": "Your withdrawal request for {amount} ETB is being processed. You will receive your funds within 24-48 hours.",
+    "scheduleDisabled": "Withdrawals are currently disabled.",
+    "scheduleDayOff": "Withdrawals are only available on {days}. Today is {today}.",
+    "scheduleHoursOff": "Withdrawals are available from {start} to {end}.",
+    "amountNotAllowed": "Withdrawal amount must be one of: {amounts} ETB",
+    "insufficientEarnings": "Insufficient earnings. Available: {available} ETB. Your capital is locked and cannot be withdrawn.",
+    "passwordRequired": "Password is required for withdrawal.",
+    "incorrectPassword": "Incorrect password. Please try again.",
+    "notFound": "Withdrawal not found or it has already been processed.",
+    "approvedTitle": "Withdrawal Approved",
+    "rejectedTitle": "Withdrawal Rejected",
+    "approvedAlertTitle": "Withdrawal Approved!",
+    "rejectedAlertTitle": "Withdrawal Rejected"
   },
   "task": {
     "allCompleted": "You completed all {count} tasks today and earned {amount} ETB. Come back tomorrow!",
-    "restDay": "Tasks are not available today. Share your referral link and earn while you rest!"
+    "scheduleDisabled": "Tasks are currently disabled.",
+    "scheduleDayOff": "Tasks are only available on {days}. Today is {today}.",
+    "scheduleHoursOff": "Tasks are available from {start} to {end}.",
+    "noPackage": "No active package. Please deposit to activate a package.",
+    "noTasksAllocated": "No tasks allocated for today.",
+    "allDone": "All tasks completed for today.",
+    "invalidIncome": "Invalid income per task value.",
+    "restDayMessage": "Tasks are not available today. Share your referral link and earn while you rest!",
+    "completedTitle": "All Tasks Completed",
+    "commissionReceived": "You earned {amount} ETB from a Level {level} team member's task."
+  },
+  "commission": {
+    "referralReceived": "You received {amount} ETB from a Level {level} referral deposit.",
+    "taskReceived": "You earned {amount} ETB from a Level {level} team member's task.",
+    "referralTitle": "Referral Commission",
+    "taskTitle": "Task Commission"
+  },
+  "suspension": {
+    "banned": "Your account has been permanently banned. Reason: {reason}. You cannot register again with this phone number.",
+    "suspended": "Your account has been suspended. Reason: {reason}. Please contact support for assistance.",
+    "bannedTitle": "Account Banned",
+    "suspendedTitle": "Account Suspended"
+  },
+  "warning": {
+    "received": "You have received a warning. Reason: {reason}. This is warning #{count}. Continued violations may result in account suspension.",
+    "title": "Warning Received"
+  },
+  "admin": {
+    "defaultSuspendReason": "Admin action",
+    "defaultWarnReason": "Policy violation",
+    "defaultBanReason": "Violation of terms",
+    "levelChanged": "Your package has been changed to {package} by admin.",
+    "levelChangedTitle": "Level Changed!",
+    "packageRemoved": "Your active package has been removed by admin.",
+    "packageRemovedTitle": "Package Removed",
+    "moneyAdded": "Admin has added {amount} ETB to your earnings. Reason: {reason}",
+    "moneyAddedTitle": "Bonus Received!",
+    "managerRankAssigned": "You are now a \"{rank}\". This rank comes with privileges and recognition.",
+    "managerRankAssignedTitle": "Manager Rank Updated!"
+  },
+  "giftCode": {
+    "redeemed": "Successfully redeemed {amount} ETB!",
+    "invalid": "Invalid or expired gift code.",
+    "expired": "This gift code has expired.",
+    "maxUses": "This gift code has reached its maximum uses.",
+    "alreadyRedeemed": "You have already redeemed this code.",
+    "created": "Gift code created successfully."
+  },
+  "auth": {
+    "invalidCredentials": "Invalid phone or password",
+    "accountSuspended": "Your account has been suspended. Please contact support.",
+    "accountBanned": "Your account has been permanently banned.",
+    "phoneExists": "Phone number already registered",
+    "registrationDisabled": "Registration is currently disabled.",
+    "passwordTooShort": "Password must be at least {min} characters.",
+    "passwordNeedNumber": "Password must contain at least one number.",
+    "passwordNeedUppercase": "Password must contain at least one uppercase letter.",
+    "passwordNeedSpecial": "Password must contain at least one special character."
+  },
+  "common": {
+    "networkError": "Network error. Please check your internet connection and try again.",
+    "serverError": "An unexpected error occurred. Please try again later.",
+    "sessionExpired": "Your session has expired. Please login again.",
+    "permissionDenied": "You don't have permission to {action}. Contact the super admin for access.",
+    "notFound": "The requested resource was not found.",
+    "validationError": "Please check your input and try again."
   }
 }

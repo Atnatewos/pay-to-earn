@@ -13,71 +13,28 @@
     "description": "Password policy settings"
   },
   "rateLimits": {
-    "general": {
-      "windowMs": 900000,
-      "max": 100,
-      "description": "15 minutes, 100 requests per window"
-    },
-    "auth": {
-      "windowMs": 900000,
-      "max": 10,
-      "description": "15 minutes, 10 login attempts per window"
-    },
-    "tasks": {
-      "windowMs": 60000,
-      "max": 30,
-      "description": "1 minute, 30 task requests per window"
-    }
+    "general": { "windowMs": 900000, "max": 100, "description": "15 minutes, 100 requests per window" },
+    "auth": { "windowMs": 900000, "max": 10, "description": "15 minutes, 10 login attempts per window" },
+    "tasks": { "windowMs": 60000, "max": 30, "description": "1 minute, 30 task requests per window" }
   },
   "csp": {
-    "enabled": true,
-    "allowedScripts": [
-      "'self'",
-      "'unsafe-inline'",
-      "https://telegram.org",
-      "https://api.qrserver.com"
-    ],
-    "allowedStyles": [
-      "'self'",
-      "'unsafe-inline'",
-      "https://fonts.googleapis.com"
-    ],
-    "allowedFonts": [
-      "'self'",
-      "https://fonts.gstatic.com"
-    ],
-    "allowedImages": [
-      "'self'",
-      "data:",
-      "https://api.qrserver.com"
-    ],
-    "allowedConnections": [
-      "'self'",
-      "https://pay-to-earn-api.onrender.com",
-      "https://api.qrserver.com"
-    ]
+    "enabled": false,
+    "description": "DISABLED: Frontend contains 161+ inline event handlers (onclick/onchange) which cannot be bypassed via CSP without a massive refactor. Re-enable only after refactoring frontend to use addEventListener().",
+    "allowedScripts": ["'self'", "'unsafe-inline'", "https://telegram.org", "https://api.qrserver.com"],
+    "allowedStyles": ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+    "allowedFonts": ["'self'", "https://fonts.gstatic.com"],
+    "allowedImages": ["'self'", "data:", "https://api.qrserver.com", "https://roulezelectrique.com", "https:"],
+    "allowedConnections": ["'self'", "https://pay-to-earn-api.onrender.com", "https://api.qrserver.com"]
   },
-  "inputSanitization": {
-    "stripHtml": true,
-    "maxLength": 5000,
-    "allowedTags": [],
-    "description": "Input sanitization settings"
-  },
+  "inputSanitization": { "stripHtml": true, "maxLength": 5000, "allowedTags": [], "description": "Input sanitization settings" },
   "headers": {
-    "hsts": {
-      "enabled": true,
-      "maxAge": 31536000,
-      "includeSubDomains": true
-    },
+    "hsts": { "enabled": true, "maxAge": 31536000, "includeSubDomains": true },
     "xFrameOptions": "DENY",
     "xContentTypeOptions": "nosniff",
     "referrerPolicy": "strict-origin-when-cross-origin"
   },
   "cors": {
-    "allowedOrigins": [
-      "https://pay-to-earn.vercel.app",
-      "http://localhost:3000"
-    ],
+    "allowedOrigins": ["https://pay-to-earn.vercel.app", "http://localhost:3000"],
     "description": "CORS allowed origins"
   }
 }
