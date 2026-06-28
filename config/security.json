@@ -74,12 +74,5 @@
     "xFrameOptions": "DENY",
     "xContentTypeOptions": "nosniff",
     "referrerPolicy": "strict-origin-when-cross-origin"
-  },
-  "cors": {
-    "allowedOrigins": [
-      "https://pay-to-earn.vercel.app",
-      "http://localhost:3000"
-    ],
-    "description": "CORS allowed origins"
   }
 }
